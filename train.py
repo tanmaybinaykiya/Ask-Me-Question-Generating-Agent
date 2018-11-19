@@ -6,8 +6,6 @@ from torch import optim
 import torch.nn.functional as F
 from torch.utils import data
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
-from torch.distributions import Categorical
-# from torchtext.vocab import GloVe
 import os, time, sys, datetime, argparse, pickle, json
 
 from data_loader import SquadDataset
