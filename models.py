@@ -25,7 +25,7 @@ class GlobalAttention(nn.Module):
         # W [c, h_t]
 
         self.linear_out = nn.Linear(dec_hidden + enc_hidden, dec_hidden)
-        self.softmax = nn.Softmax()
+        self.softmax = nn.Softmax(dim=1)
         self.tanh = nn.Tanh()
 
     def sequence_mask(self, lengths, max_len=None):
@@ -35,7 +35,7 @@ class GlobalAttention(nn.Module):
         #batch_size = lengths.numel()
         batch_size = 1
         max_len = max_len or lengths
-        return(torch.arange(0, max_len).repeat(batch_size, 1)) #lt(lengths.unsqueeze(1)))
+        return(torch.arange(0, max_len).repeat(batch_size, 1)).lt(lengths)
 
     def forward(self, inputs, context, context_lengths):
         """
@@ -49,14 +49,14 @@ class GlobalAttention(nn.Module):
         batch, tgt_len, src_len = align.size()
 
         mask = self.sequence_mask(context_lengths)
-        print(mask)
+
         # (batch, 1, src_len)
         mask = mask.unsqueeze(1)  # Make it broadcastable.
         #if next(self.parameters()).is_cuda:
             #mask = mask.cuda()
         align.data.masked_fill_(1 - mask, -float('inf'))  # fill <pad> with -inf
 
-        align_vectors = self.softmax(align.view(batch * tgt_len, src_len))
+        align_vectors = self.softmax(align.view(batch * tgt_len, src_len)) #softmax over source scores
         align_vectors = align_vectors.view(batch, tgt_len, src_len)
 
         # (batch, tgt_len, src_len) * (batch, src_len, enc_hidden) -> (batch, tgt_len, enc_hidden)
@@ -168,9 +168,7 @@ class DecoderLSTM(nn.Module):
             context.transpose(0, 1).contiguous(),         # (len, batch, d) -> (batch, len, d)
             context_lengths=context_lengths
         )
-        # Don't need LogSoftmax with CrossEntropyLoss
-        # the outputs are not normalized, and can be negative
-        # Note that a mask is needed to compute the loss
+
         outputs = self.linear_out(attn_outputs)
         return outputs, decoder_hidden
 
