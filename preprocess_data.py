@@ -70,10 +70,15 @@ def preprocess(filename):
 
 def main():
     paragraphs, qAPairs, word_to_idx, idx_to_word = preprocess("dataset/squad.json")
-    open("./data/paragraphs.json", "x").write(json.dumps(paragraphs))
-    open("./data/qAPairs.json", "x").write(json.dumps(qAPairs))
-    open("./data/word_to_idx.json", "x").write(json.dumps(word_to_idx))
-    open("./data/idx_to_word.json", "x").write(json.dumps(idx_to_word))
+
+    with open("./data/paragraphs.json", "x") as f:
+        f.write(json.dumps(paragraphs))
+    with open("./data/qAPairs.json", "x") as f:
+        f.write(json.dumps(qAPairs))
+    with open("./data/word_to_idx.json", "x") as f:
+        f.write(json.dumps(word_to_idx))
+    with open("./data/idx_to_word.json", "x") as f:
+        f.write(json.dumps(idx_to_word))
 
 
 if __name__ == '__main__':

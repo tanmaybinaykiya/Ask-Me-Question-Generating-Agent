@@ -1,8 +1,10 @@
 import json
+
 import numpy as np
+import torch
 from torch.utils import data
 from torch.utils.data import DataLoader
-import torch
+
 
 # QuestionAnswerPair = namedtuple('QuestionAnswer', ['question', 'answer', 'paragraphId'])
 
@@ -18,16 +20,21 @@ class SquadDataset(data.Dataset):
     def __init__(self):
         self.paragraphs = json.load(open(self.paragraphs_path, "r"))
         self.questionAnswerPairs = json.load(open(self.question_answer_pairs_path, "r"))
-        self.idx_to_word = json.load(open(self.word_to_idx_path, "r"))
-        self.word_to_idx = json.load(open(self.idx_to_word_path, "r"))
+        self.idx_to_word = json.load(open(self.idx_to_word_path, "r"))
+        self.word_to_idx = json.load(open(self.word_to_idx_path, "r"))
 
     def __len__(self):
         return len(self.questionAnswerPairs)
 
-
     def __getitem__(self, index):
-        #print("GET ITEM: ", self.questionAnswerPairs[index])
+        print("GET: Q:", self.questionAnswerPairs[index][0],
+              [self.idx_to_word[str(el)] for el in val.__getitem__(index)[0]])
+        print("GET: A:", self.questionAnswerPairs[index][1],
+              [self.idx_to_word[str(el)] for el in val.__getitem__(index)[1]])
+        print("GET: P:", self.questionAnswerPairs[index][2],
+              [self.idx_to_word[str(el)] for el in val.__getitem__(index)[2]])
         return self.questionAnswerPairs[index]
+
 
 def collate_fn(data):
     """Creates mini-batch tensors from the list of tuples (src_seq, trg_seq).
@@ -54,28 +61,28 @@ def collate_fn(data):
         return padded_seqs, lengths
 
     # sort a list by sequence length (descending order) to use pack_padded_sequence
-    #data.sort(key=lambda x: len(x[0]), reverse=True)
+    # data.sort(key=lambda x: len(x[0]), reverse=True)
     data.sort(key=lambda x: len(x[1]), reverse=True)
     # seperate source and target sequences
-    src_seqs, trg_seqs,p_id = zip(*data)
+    src_seqs, trg_seqs, p_id = zip(*data)
 
     # merge sequences (from tuple of 1D tensor to 2D tensor)
     src_seqs, src_lengths = merge(src_seqs)
     trg_seqs, trg_lengths = merge(trg_seqs)
 
-    return src_seqs, src_lengths, trg_seqs, trg_lengths,p_id
+    return src_seqs, src_lengths, trg_seqs, trg_lengths, p_id
 
 
 if __name__ == '__main__':
+    idx_to_word = json.load(open("./data/idx_to_word.json", "r"))
     val = SquadDataset()
 
-    train_loader = DataLoader(val, batch_size=4, shuffle=True, num_workers=0,collate_fn=collate_fn)
-    iterator =iter(train_loader)
+    train_loader = DataLoader(val, batch_size=4, shuffle=True, num_workers=0, collate_fn=collate_fn)
+    iterator = iter(train_loader)
     for data in train_loader:
         print(data[0])
-        #print("z: ", z)
+        # print("z: ", z)
 
 
 class CustomDataLoader(DataLoader):
-
     pass
