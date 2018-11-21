@@ -33,9 +33,13 @@ class GlobalAttention(nn.Module):
         Creates a boolean mask from sequence lengths.
         """
         #batch_size = lengths.numel()
-        batch_size = 1
+        batch_size = 64
         max_len = max_len or lengths
-        return(torch.arange(0, max_len).repeat(batch_size, 1)).lt(lengths)
+
+        mask=(torch.arange(0, max_len).repeat(batch_size, 1)).lt(lengths)
+        if torch.cuda.is_available():
+            return mask.cuda()
+        return mask
 
     def forward(self, inputs, context, context_lengths):
         """
@@ -117,10 +121,10 @@ class EncoderBILSTM(nn.Module):
         """
         # [seq_length, batch_size, embed_length]
         embeds = self.word_embeds(inputs)
-        packed = pack_padded_sequence(embeds, lengths=(lengths,))
+        packed = pack_padded_sequence(embeds, lengths=lengths,batch_first=True)
         outputs, hiddens = self.lstm(packed)
         if not return_packed:
-            return pad_packed_sequence(outputs)[0], hiddens
+            return pad_packed_sequence(outputs,True)[0], hiddens
         return outputs, hiddens
 
 
@@ -155,9 +159,10 @@ class DecoderLSTM(nn.Module):
         """
 
         embedded = self.word_embeds(inputs)
+        embedded = embedded.transpose(0,1)
 
-        decode_hidden_init = torch.cat([hidden[0][0],hidden[1][0]], 1)
-        decode_cell_init = torch.cat([hidden[0][1],hidden[1][1]], 1)
+        decode_hidden_init = torch.cat([hidden[0][0],hidden[0][1]], 1).unsqueeze(0)
+        decode_cell_init = torch.cat([hidden[1][0],hidden[1][1]], 1).unsqueeze(0)
 
         #embedded = self.dropout(embedded)
         decoder_unpacked, decoder_hidden = self.lstm(embedded, (decode_hidden_init, decode_cell_init))
@@ -165,7 +170,7 @@ class DecoderLSTM(nn.Module):
         # Calculate the attention.
         attn_outputs, attn_scores = self.attn(
             decoder_unpacked.transpose(0, 1).contiguous(),  # (len, batch, d) -> (batch, len, d)
-            context.transpose(0, 1).contiguous(),         # (len, batch, d) -> (batch, len, d)
+            context,# (len, batch, d) -> (batch, len, d)
             context_lengths=context_lengths
         )
 
