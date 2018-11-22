@@ -28,15 +28,13 @@ class GlobalAttention(nn.Module):
         self.softmax = nn.Softmax(dim=1)
         self.tanh = nn.Tanh()
 
-    def sequence_mask(self, lengths, max_len=None):
+    def sequence_mask(self,lengths, max_len=None):
         """
         Creates a boolean mask from sequence lengths.
         """
-        #batch_size = lengths.numel()
-        batch_size = 64
-        max_len = max_len or lengths
-
-        mask=(torch.arange(0, max_len).repeat(batch_size, 1)).lt(lengths)
+        batch_size = lengths.numel()
+        max_len = max_len or lengths.max()
+        mask = (torch.arange(0, max_len).repeat(batch_size, 1)).lt(lengths.unsqueeze(1))
         if torch.cuda.is_available():
             return mask.cuda()
         return mask
@@ -151,7 +149,7 @@ class DecoderLSTM(nn.Module):
         self.attn = GlobalAttention(encoder_hidden_dim, hidden_dim)
         #self.dropout = nn.Dropout(dropout)
 
-    def forward(self, inputs, hidden, context, context_lengths):
+    def forward(self, inputs, hidden, context, context_lengths,eval_mode=False):
         """
         inputs: (tgt_len, batch_size, d)
         hidden: last hidden state from encoder
@@ -160,9 +158,12 @@ class DecoderLSTM(nn.Module):
 
         embedded = self.word_embeds(inputs)
         embedded = embedded.transpose(0,1)
-
-        decode_hidden_init = torch.cat([hidden[0][0],hidden[0][1]], 1).unsqueeze(0)
-        decode_cell_init = torch.cat([hidden[1][0],hidden[1][1]], 1).unsqueeze(0)
+        if not eval_mode:
+            decode_hidden_init = torch.cat([hidden[0][0],hidden[0][1]], 1).unsqueeze(0)
+            decode_cell_init = torch.cat([hidden[1][0],hidden[1][1]], 1).unsqueeze(0)
+        else:
+            decode_hidden_init=hidden[0]
+            decode_cell_init=hidden[1]
 
         #embedded = self.dropout(embedded)
         decoder_unpacked, decoder_hidden = self.lstm(embedded, (decode_hidden_init, decode_cell_init))
