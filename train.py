@@ -248,49 +248,52 @@ def beam_search():
 criterion = nn.CrossEntropyLoss(ignore_index=0)
 optimizer_enc=torch.optim.SGD(encoder.parameters(),lr=1.0)
 optimizer_dec=torch.optim.SGD(decoder.parameters(),lr=1.0)
-total_batch_loss=0
-for eachEpoch in range(num_epoch):
-    for eachBatch in range(batch_per_epoch):
-        i = batch_per_epoch * eachEpoch + eachBatch + 1  # global step
-        batch = next(train_iter)
-        #each batch is size 1 for now
+def train():
+    total_batch_loss = 0
+    for eachEpoch in range(num_epoch):
+        for eachBatch in range(batch_per_epoch):
+            i = batch_per_epoch * eachEpoch + eachBatch + 1  # global step
+            batch = next(train_iter)
+            #each batch is size 1 for now
 
-        questions,questions_org_len,answers,answers_org_len, pID = batch
+            questions,questions_org_len,answers,answers_org_len, pID = batch
 
-        if torch.cuda.is_available() :
-            questions=questions.cuda()
-            answers=answers.cuda()
+            if torch.cuda.is_available() :
+                questions=questions.cuda()
+                answers=answers.cuda()
 
-        #answer = torch.stack(answers,answers_org_len)
-        #answer = torch.autograd.Variable(answers)
-
-
-        #question = torch.stack(question)
-        #question = torch.autograd.Variable(question)
-
-        encoder_input, encoder_len = answers, answers_org_len
-        decoder_input, decoder_len = questions, questions.shape[1]
+            #answer = torch.stack(answers,answers_org_len)
+            #answer = torch.autograd.Variable(answers)
 
 
+            #question = torch.stack(question)
+            #question = torch.autograd.Variable(question)
 
-        encoder_out, encoder_hidden = encoder(encoder_input, torch.LongTensor(encoder_len).cuda())
-        decoder_out, decoder_hidden = decoder(decoder_input[:,:-1], encoder_hidden, encoder_out,
-                                                   torch.FloatTensor(answers_org_len))
-
-        decoder_out=decoder_out.transpose(0,1).contiguous()
-        decoder_out=decoder_out.transpose(1,2).contiguous()
-        loss=criterion(decoder_out,questions[:,:-1])
-        optimizer_enc.zero_grad()
-        optimizer_dec.zero_grad()
-        loss.backward()
-        optimizer_enc.step()
-        optimizer_dec.step()
-        total_batch_loss+= loss.item()
-
-        break
-    print("Loss for the batch is")
-    print(total_batch_loss/batch_per_epoch)
+            encoder_input, encoder_len = answers, answers_org_len
+            decoder_input, decoder_len = questions, questions.shape[1]
 
 
-torch.save(encoder.state_dict(),"model_weights/encoder.pth")
-torch.save(decoder.state_dict(),"model_weights/decoder.pth")
+
+            encoder_out, encoder_hidden = encoder(encoder_input, torch.LongTensor(encoder_len).cuda())
+            decoder_out, decoder_hidden = decoder(decoder_input[:,:-1], encoder_hidden, encoder_out,
+                                                       torch.FloatTensor(answers_org_len))
+
+            decoder_out=decoder_out.transpose(0,1).contiguous()
+            decoder_out=decoder_out.transpose(1,2).contiguous()
+            loss=criterion(decoder_out,questions[:,:-1])
+            optimizer_enc.zero_grad()
+            optimizer_dec.zero_grad()
+            loss.backward()
+            optimizer_enc.step()
+            optimizer_dec.step()
+            total_batch_loss+= loss.item()
+
+            break
+        print("Loss for the batch is")
+        print(total_batch_loss/batch_per_epoch)
+
+
+    torch.save(encoder.state_dict(),"model_weights/encoder.pth")
+    torch.save(decoder.state_dict(),"model_weights/decoder.pth")
+
+train()
