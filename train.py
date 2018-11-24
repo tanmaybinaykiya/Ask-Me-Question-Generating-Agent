@@ -20,12 +20,15 @@ train_data = SquadDataset()
 with open("data/idx_to_word.json",'r') as f:
     idx_to_word=json.loads(f.read())
 
+with open("data/word_to_idx.json",'r') as f:
+    word_to_idx=json.loads(f.read())
+
 #for z in next(iter(train_loader)):
     #z = next(iter())
     #print("z: ", z)
 
 num_epoch = 15
-batch_size = 1
+batch_size = 2
 train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=0,collate_fn=collate_fn,pin_memory=True)
 #test_loader=  DataLoader(test_data, batch_size=batch_size, shuffle=True, num_workers=0,collate_fn=collate_fn,pin_memory=True)
 
@@ -52,13 +55,67 @@ def exp_lr_scheduler(optimizer, epoch, lr_decay=0.1, lr_decay_epoch=8):
         param_group['lr'] *= lr_decay
     return optimizer
 
-encoder = EncoderBILSTM(vocab_size=train_vocab_size, n_layers=1, embedding_dim=100, hidden_dim=600, dropout=0) #embeddings=word_embeddings_glove)
-decoder = DecoderLSTM(vocab_size=train_vocab_size, embedding_dim=100, hidden_dim=600, n_layers=1, encoder_hidden_dim=600)
+encoder = EncoderBILSTM(vocab_size=train_vocab_size, n_layers=1, embedding_dim=300, hidden_dim=500, dropout=0) #embeddings=word_embeddings_glove)
+decoder = DecoderLSTM(vocab_size=train_vocab_size, embedding_dim=300, hidden_dim=500, n_layers=1, encoder_hidden_dim=500)
 
-if torch.cuda.is_available():
+if torch.cuda.is_available() :
     encoder=encoder.cuda()
     decoder=decoder.cuda()
 
+def greedy_search():
+    encoder.eval()
+    decoder.eval()
+    encoder.load_state_dict(torch.load("model_weights/encoder.pth"))
+    decoder.load_state_dict(torch.load("model_weights/decoder.pth"))
+
+    max_len=30
+    batch_size=2
+    for eachBatch in range(batch_per_epoch):
+        batch = next(train_iter)
+
+        questions, questions_org_len, answers, answers_org_len, pID = batch
+
+        if torch.cuda.is_available() :
+            questions = questions.cuda()
+            answers = answers.cuda()
+
+        encoder_input, encoder_len = answers, np.asarray(answers_org_len)
+        decoder_input, decoder_len = questions, questions.shape[1]
+
+        encoder_len = torch.LongTensor(encoder_len)
+        if torch.cuda.is_available() :
+            encoder_len = torch.LongTensor(encoder_len).cuda()
+        encoder_out, encoder_hidden = encoder(encoder_input, torch.LongTensor(encoder_len))
+        decoder_hidden = encoder_hidden
+        # input to the first time step of decoder is <SOS> token.
+        decoder_inp = torch.zeros((batch_size, 1), dtype=torch.long)
+        seq_len=0
+        eval_mode=False
+        predicted_sequences=[]
+        while seq_len<max_len:
+            seq_len+=1
+            decoder_out, decoder_hidden = decoder(decoder_inp, decoder_hidden, encoder_out,
+                                      torch.FloatTensor(answers_org_len), eval_mode=eval_mode)
+
+            # obtaining log_softmax scores we need to minimize log softmax over a span.
+            decoder_out = decoder_out.view(batch_size, -1)
+            decoder_out = torch.nn.functional.log_softmax(decoder_out)
+            prediction=torch.argmax(decoder_out,1).unsqueeze(1)
+            predicted_sequences.append(prediction)
+            decoder_inp=prediction.clone()
+            eval_mode=True
+        given_sentence=[[idx_to_word[str(answers[i][j].item())] for j in range(len(answers[i])) if answers[i][j]!=0] for i in range(len(answers))]
+        ground_truth=[[idx_to_word[str(questions[i][j].item())] for j in range(len(questions[i])) if questions[i][j]!=0] for i in range(len(questions))]
+        predicted_sequences=[[idx_to_word[str(predicted_sequences[j][i][0].item())] for j in range(len(predicted_sequences)) if idx_to_word[str(predicted_sequences[j][i][0].item())]!='<EOS>'] \
+                             for i in range(batch_size)]
+
+        for i in range(len(given_sentence)):
+            print("The given statement is")
+            print(" ".join(given_sentence[i]))
+            print("The ground truth is ")
+            print(" ".join(ground_truth[i]))
+            print("The predicted question is")
+            print(" ".join(predicted_sequences[i]))
 
 def beam_search():
     batch_size=2
@@ -72,7 +129,7 @@ def beam_search():
 
         questions, questions_org_len, answers, answers_org_len, pID = batch
 
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() :
             questions=questions.cuda()
             answers=answers.cuda()
 
@@ -186,7 +243,7 @@ def beam_search():
             print(idx_to_word[str(prediction[i][0])])
 
     pass
-
+#greedy_search()
 #beam_search()
 criterion = nn.CrossEntropyLoss(ignore_index=0)
 optimizer_enc=torch.optim.SGD(encoder.parameters(),lr=1.0)
@@ -200,7 +257,7 @@ for eachEpoch in range(num_epoch):
 
         questions,questions_org_len,answers,answers_org_len, pID = batch
 
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() :
             questions=questions.cuda()
             answers=answers.cuda()
 
@@ -229,6 +286,7 @@ for eachEpoch in range(num_epoch):
         optimizer_enc.step()
         optimizer_dec.step()
         total_batch_loss+= loss.item()
+
         break
     print("Loss for the batch is")
     print(total_batch_loss/batch_per_epoch)
