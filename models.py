@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from torch import optim
+from constants import UNK_VECTOR_REPRESENTATION
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 import os, time, sys
@@ -187,13 +188,15 @@ def obtain_glove_embeddings(filename, word_to_ix):
 
     vocab_lower = [k.lower() for k, v in word_to_ix.items()]
 
-    f = open(filename)
-    for line in f:
-        values = line.split()
-        word = values[0]
-        if word in word_to_ix or word == '<unk>' or word in vocab_lower:
-            word_vecs[word] = np.array(values[1:], dtype='float32')
-
+    f = open(filename,'r',encoding='utf-8')
+    try:
+        for line in f:
+            values = line.split()
+            word = values[0]
+            if word in word_to_ix or word == 'unk' or word in vocab_lower:
+                word_vecs[word] = np.array(values[1:], dtype='float32')
+    except Exception as e:
+        pass
     word_embeddings = []
 
     i = 0
@@ -203,9 +206,10 @@ def obtain_glove_embeddings(filename, word_to_ix):
             embed = word_vecs[word.lower()]
             j += 1
         else:
-            embed = word_vecs['<unk>']
+            embed = UNK_VECTOR_REPRESENTATION
             i += 1
         word_embeddings.append(embed)
 
     word_embeddings = np.array(word_embeddings)
+    np.save("data/glove_word_embeddings.npy",word_embeddings)
     return word_embeddings
