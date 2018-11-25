@@ -1,9 +1,12 @@
 import json
+import os.path
 
 import numpy as np
 import torch
 from torch.utils import data
 from torch.utils.data import DataLoader
+
+from constants import UNKNOWN
 
 
 # QuestionAnswerPair = namedtuple('QuestionAnswer', ['question', 'answer', 'paragraphId'])
@@ -93,25 +96,40 @@ def collate_fn(datum):
     return src_seqs, src_lengths, trg_seqs, trg_lengths, p_id
 
 
-def obtain_glove_embeddings(filename, word_to_ix):
-    vocab = [k for k, v in word_to_ix.items()]
+def obtain_glove_embeddings(glove_filename, word_to_ix, pruned_glove_filename):
+    if os.path.isfile(pruned_glove_filename):
+        print("%s exists. Loading..." % pruned_glove_filename)
+        word_embeddings = np.load(pruned_glove_filename)
+    else:
+        print("%s doesn't exist. Pruning..." % pruned_glove_filename)
+        word_embeddings = prune_glove_embeddings(glove_filename, word_to_ix)
+        np.save(pruned_glove_filename, word_embeddings)
+    return word_embeddings
 
-    word_vecs = {}
+
+def prune_glove_embeddings(filename, word_to_ix):
+    vocab = list(word_to_ix.keys())
+    UNK_VECTOR_REPRESENTATION = np.array([0.0] * 300)
+
+    word_vecs = {UNKNOWN: UNK_VECTOR_REPRESENTATION}
 
     f = open(filename, encoding='utf-8')
     for line in f:
-        values = line.split()
-        word = values[0]
-        if word in word_to_ix or word == '<unk>':
-            word_vecs[word] = np.array(values[1:], dtype='float32')
+        try:
+            values = line.split()
+            word = values[0]
+            if word in word_to_ix:
+                word_vecs[word] = np.array(values[1:], dtype='float32')
+        except ValueError:
+            pass
 
     word_embeddings = []
 
     for word in vocab:
-        if word in word_vecs or word.lower() in word_vecs:
-            embed = word_vecs[word.lower()]
+        if word in word_vecs:
+            embed = word_vecs[word]
         else:
-            embed = word_vecs['<unk>']
+            embed = UNK_VECTOR_REPRESENTATION
         word_embeddings.append(embed)
 
     word_embeddings = np.array(word_embeddings)

@@ -124,10 +124,12 @@ class SquadPreProcessor:
 def main():
 
     train = SquadPreProcessor(path="dataset/squad-train-v1.1.json", split="train", q_vocab_size=45000, a_vocab_size=28000)
-    train.persist(train.preprocess())
+    paragraphs, question_answer_pairs = train.preprocess()
+    train.persist(paragraphs, question_answer_pairs)
 
     dev = SquadPreProcessor(path="dataset/squad-dev-v1.1.json", split="dev", q_vocab_size=45000, a_vocab_size=28000)
-    dev.persist(dev.preprocess())
+    paragraphs, question_answer_pairs = dev.preprocess()
+    dev.persist(paragraphs, question_answer_pairs)
 
 
 if __name__ == '__main__':

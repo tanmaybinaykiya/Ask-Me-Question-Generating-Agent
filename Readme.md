@@ -26,5 +26,5 @@ mv glove.840B.300d.txt data/
 ### Preprocess Data
 
 ```sh
-python DataProcessor.py
+python SquadPreProcessor.py
 ```

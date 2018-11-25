@@ -29,7 +29,7 @@ def main():
     batch_per_epoch = n_train // batch_size
     n_iters = batch_per_epoch * num_epoch
 
-    word_embeddings_glove = obtain_glove_embeddings(filename_glove, word_to_idx)
+    word_embeddings_glove = obtain_glove_embeddings(filename_glove, word_to_idx, "data/answer_glove_embeddings.npy")
 
     train_vocab_size = len(word_to_idx)
     train_iter = iter(train_loader)
