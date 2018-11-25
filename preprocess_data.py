@@ -68,17 +68,22 @@ def preprocess(filename):
     return paragraphs, questAnswerPairs, word_to_idx, idx_to_word
 
 
-def main():
-    paragraphs, qAPairs, word_to_idx, idx_to_word = preprocess("dataset/squad.json")
+def preprocess_dataset(path, split):
+    paragraphs, qAPairs, word_to_idx, idx_to_word = preprocess(path)
 
-    with open("./data/paragraphs.json", "x") as f:
+    with open("./data/%s/paragraphs.json" % split, "x") as f:
         f.write(json.dumps(paragraphs))
-    with open("./data/qAPairs.json", "x") as f:
+    with open("./data/%s/qAPairs.json" % split, "x") as f:
         f.write(json.dumps(qAPairs))
-    with open("./data/word_to_idx.json", "x") as f:
+    with open("./data/%s/word_to_idx.json" % split, "x") as f:
         f.write(json.dumps(word_to_idx))
-    with open("./data/idx_to_word.json", "x") as f:
+    with open("./data/%s/idx_to_word.json" % split, "x") as f:
         f.write(json.dumps(idx_to_word))
+
+
+def main():
+    # preprocess_dataset(path="dataset/squad-train-v1.1.json", split="train")
+    preprocess_dataset(path="dataset/squad-dev-v1.1.json", split="dev")
 
 
 if __name__ == '__main__':
