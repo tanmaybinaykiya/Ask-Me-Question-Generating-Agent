@@ -1,7 +1,15 @@
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.autograd import Variable
+from torch import optim
 import torch.nn.functional as F
+from torch.utils import data
+from torch.nn.utils import clip_grad_norm_
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
+import os, time, sys, datetime, argparse, pickle, json
+
+from data_loader import SquadDataset,collate_fn
 from torch.utils.data import DataLoader
 
 from DataLoader import SquadDataset, collate_fn
@@ -46,7 +54,7 @@ encoder = EncoderBILSTM(vocab_size=train_vocab_size, n_layers=1, embedding_dim=3
 decoder = DecoderLSTM(vocab_size=train_vocab_size, embedding_dim=300, hidden_dim=500, n_layers=1,
                       encoder_hidden_dim=500)
 
-if torch.cuda.is_available():
+if torch.cuda.is_available() and False:
     encoder = encoder.cuda()
     decoder = decoder.cuda()
 
@@ -64,7 +72,7 @@ def greedy_search():
 
         questions, questions_org_len, answers, answers_org_len, pID = batch
 
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and False :
             questions = questions.cuda()
             answers = answers.cuda()
 
@@ -72,7 +80,7 @@ def greedy_search():
         decoder_input, decoder_len = questions, questions.shape[1]
 
         encoder_len = torch.LongTensor(encoder_len)
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and False :
             encoder_len = torch.LongTensor(encoder_len).cuda()
         encoder_out, encoder_hidden = encoder(encoder_input, torch.LongTensor(encoder_len))
         decoder_hidden = encoder_hidden
@@ -258,9 +266,9 @@ def train():
 
             questions, questions_org_len, answers, answers_org_len, pID = batch
 
-            if torch.cuda.is_available():
-                questions = questions.cuda()
-                answers = answers.cuda()
+            if torch.cuda.is_available() and False:
+                questions=questions.cuda()
+                answers=answers.cuda()
 
             # answer = torch.stack(answers,answers_org_len)
             # answer = torch.autograd.Variable(answers)
@@ -281,6 +289,8 @@ def train():
             optimizer_enc.zero_grad()
             optimizer_dec.zero_grad()
             loss.backward()
+            clip_grad_norm_(encoder.parameters(),5)
+            clip_grad_norm_(decoder.parameters(), 5)
             optimizer_enc.step()
             optimizer_dec.step()
             total_batch_loss += loss.item()
