@@ -104,7 +104,6 @@ class DataProcessor:
                     q = self.transform_to_idx(q_s, q=True)
                     a = self.transform_to_idx(a_s, q=False)
                     question_answer_pairs.append((q, a, dict_para_id))
-            print("Datum Id:[%d/%d] completed" % (datum_id, len(data)))
         return paragraphs, question_answer_pairs
 
     def preprocess_dataset(self):
