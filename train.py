@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 
 from DataLoader import SquadDataset, collate_fn, obtain_glove_embeddings
 from models import EncoderBILSTM, DecoderLSTM
-
+import os
 
 def exp_lr_scheduler(optimizer, epoch, lr_decay=0.1, lr_decay_epoch=8):
     """Decay learning rate by a factor of lr_decay every lr_decay_epoch epochs"""
@@ -284,6 +284,8 @@ def main(use_cuda=False, filename_glove='data/glove.840B.300d.txt'):
     criterion = nn.CrossEntropyLoss(ignore_index=0)
     optimizer_enc = torch.optim.SGD(encoder.parameters(), lr=1.0)
     optimizer_dec = torch.optim.SGD(decoder.parameters(), lr=1.0)
+    if not os.path.isdir("model_weights"):
+        os.makedirs("model_weights", exist_ok=True)
     train(encoder, decoder, num_epoch, batch_per_epoch, train_iter, criterion, optimizer_enc, optimizer_dec, use_cuda)
 
     dev_dataset = SquadDataset(split="dev")

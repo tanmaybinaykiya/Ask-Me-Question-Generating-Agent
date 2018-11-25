@@ -97,6 +97,7 @@ def collate_fn(datum):
 
 
 def obtain_glove_embeddings(glove_filename, word_to_ix, pruned_glove_filename):
+    assert os.path.isfile(glove_filename), "Glove File doesn't exist"
     if os.path.isfile(pruned_glove_filename):
         print("%s exists. Loading..." % pruned_glove_filename)
         word_embeddings = np.load(pruned_glove_filename)
