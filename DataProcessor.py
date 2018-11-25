@@ -22,10 +22,10 @@ class DataProcessor:
             os.makedirs("./data/%s" % self.split, exist_ok=True)
         self.paragraphs_path = "./data/%s/paragraphs.json" % self.split
         self.qa_pairs_path = "./data/%s/q_a_pairs.json" % self.split
-        self.q_word_to_idx_path = "./data/%s/word_to_idx.json" % self.split
-        self.q_idx_to_word_path = "./data/%s/idx_to_word.json" % self.split
-        self.a_word_to_idx_path = "./data/%s/word_to_idx.json" % self.split
-        self.a_idx_to_word_path = "./data/%s/idx_to_word.json" % self.split
+        self.q_word_to_idx_path = "./data/%s/q_word_to_idx.json" % self.split
+        self.q_idx_to_word_path = "./data/%s/q_idx_to_word.json" % self.split
+        self.a_word_to_idx_path = "./data/%s/a_word_to_idx.json" % self.split
+        self.a_idx_to_word_path = "./data/%s/a_idx_to_word.json" % self.split
 
     @staticmethod
     def preproc_sentence(sentence):
