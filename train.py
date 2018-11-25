@@ -1,23 +1,16 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
-from torch import optim
 import torch.nn.functional as F
-from torch.utils import data
 from torch.nn.utils import clip_grad_norm_
-from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
-import os, time, sys, datetime, argparse, pickle, json
-
-from data_loader import SquadDataset,collate_fn
 from torch.utils.data import DataLoader
 
 from DataLoader import SquadDataset, collate_fn
 from models import EncoderBILSTM, DecoderLSTM
 
 train_dataset = SquadDataset(split="train")
-idx_to_word = train_dataset.get_idx_to_word()
-word_to_idx = train_dataset.get_word_to_idx()
+idx_to_word = train_dataset.get_answer_idx_to_word()
+word_to_idx = train_dataset.get_answer_word_to_idx()
 
 dev_dataset = SquadDataset(split="dev")
 
@@ -72,7 +65,7 @@ def greedy_search():
 
         questions, questions_org_len, answers, answers_org_len, pID = batch
 
-        if torch.cuda.is_available() and False :
+        if torch.cuda.is_available() and False:
             questions = questions.cuda()
             answers = answers.cuda()
 
@@ -80,7 +73,7 @@ def greedy_search():
         decoder_input, decoder_len = questions, questions.shape[1]
 
         encoder_len = torch.LongTensor(encoder_len)
-        if torch.cuda.is_available() and False :
+        if torch.cuda.is_available() and False:
             encoder_len = torch.LongTensor(encoder_len).cuda()
         encoder_out, encoder_hidden = encoder(encoder_input, torch.LongTensor(encoder_len))
         decoder_hidden = encoder_hidden
@@ -267,8 +260,8 @@ def train():
             questions, questions_org_len, answers, answers_org_len, pID = batch
 
             if torch.cuda.is_available() and False:
-                questions=questions.cuda()
-                answers=answers.cuda()
+                questions = questions.cuda()
+                answers = answers.cuda()
 
             # answer = torch.stack(answers,answers_org_len)
             # answer = torch.autograd.Variable(answers)
@@ -289,7 +282,7 @@ def train():
             optimizer_enc.zero_grad()
             optimizer_dec.zero_grad()
             loss.backward()
-            clip_grad_norm_(encoder.parameters(),5)
+            clip_grad_norm_(encoder.parameters(), 5)
             clip_grad_norm_(decoder.parameters(), 5)
             optimizer_enc.step()
             optimizer_dec.step()
@@ -303,4 +296,5 @@ def train():
     torch.save(decoder.state_dict(), "model_weights/decoder.pth")
 
 
-train()
+if __name__ == '__main__':
+    train()
