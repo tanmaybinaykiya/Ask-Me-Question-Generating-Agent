@@ -5,7 +5,7 @@ from collections import Counter
 from constants import *
 
 
-class DataProcessor:
+class SquadPreProcessor:
 
     def __init__(self, path, split, q_vocab_size, a_vocab_size):
         self.dataset_path = path
@@ -79,9 +79,9 @@ class DataProcessor:
             for para_id, para in enumerate(datum["paragraphs"]):
                 periods = [idx for idx, char in enumerate(para["context"]) if char == '.']
                 for qa in para["qas"]:
-                    q_s = DataProcessor.preproc_sentence(qa['question'])
-                    a_s = DataProcessor.preproc_sentence(
-                        (DataProcessor.get_sentence(para["context"], periods, qa["answers"][0]["answer_start"])))
+                    q_s = SquadPreProcessor.preproc_sentence(qa['question'])
+                    a_s = SquadPreProcessor.preproc_sentence(
+                        (SquadPreProcessor.get_sentence(para["context"], periods, qa["answers"][0]["answer_start"])))
                     self.q_vocab.update(q_s)
                     self.a_vocab.update(a_s)
 
@@ -94,9 +94,9 @@ class DataProcessor:
                 paragraphs[dict_para_id] = para["context"]
                 periods = [idx for idx, char in enumerate(para["context"]) if char == '.']
                 for qa in para["qas"]:
-                    q_s = DataProcessor.preproc_sentence(qa['question'])
-                    a_s = DataProcessor.preproc_sentence(
-                        (DataProcessor.get_sentence(para["context"], periods, qa["answers"][0]["answer_start"])))
+                    q_s = SquadPreProcessor.preproc_sentence(qa['question'])
+                    a_s = SquadPreProcessor.preproc_sentence(
+                        (SquadPreProcessor.get_sentence(para["context"], periods, qa["answers"][0]["answer_start"])))
 
                     self.update_word_idx_map(q_s, q=True)
                     self.update_word_idx_map(a_s, q=False)
@@ -106,8 +106,7 @@ class DataProcessor:
                     question_answer_pairs.append((q, a, dict_para_id))
         return paragraphs, question_answer_pairs
 
-    def preprocess_dataset(self):
-        paragraphs, q_a_pairs, = self.preprocess()
+    def persist(self, paragraphs, q_a_pairs):
         with open(self.paragraphs_path, "w") as f:
             f.write(json.dumps(paragraphs))
         with open(self.qa_pairs_path, "w") as f:
@@ -123,8 +122,12 @@ class DataProcessor:
 
 
 def main():
-    DataProcessor(path="dataset/squad-train-v1.1.json", split="train", q_vocab_size=45000, a_vocab_size=28000).preprocess_dataset()
-    DataProcessor(path="dataset/squad-dev-v1.1.json", split="dev", q_vocab_size=45000, a_vocab_size=28000).preprocess_dataset()
+
+    train = SquadPreProcessor(path="dataset/squad-train-v1.1.json", split="train", q_vocab_size=45000, a_vocab_size=28000)
+    train.persist(train.preprocess())
+
+    dev = SquadPreProcessor(path="dataset/squad-dev-v1.1.json", split="dev", q_vocab_size=45000, a_vocab_size=28000)
+    dev.persist(dev.preprocess())
 
 
 if __name__ == '__main__':

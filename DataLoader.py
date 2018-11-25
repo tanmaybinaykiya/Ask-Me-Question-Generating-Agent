@@ -98,30 +98,25 @@ def obtain_glove_embeddings(filename, word_to_ix):
 
     word_vecs = {}
 
-    vocab_lower = [k.lower() for k, v in word_to_ix.items()]
-
-    f = open(filename)
+    f = open(filename, encoding='utf-8')
     for line in f:
         values = line.split()
         word = values[0]
-        if word in word_to_ix or word == '<unk>' or word in vocab_lower:
+        if word in word_to_ix or word == '<unk>':
             word_vecs[word] = np.array(values[1:], dtype='float32')
 
     word_embeddings = []
 
-    i = 0
-    j = 0
     for word in vocab:
         if word in word_vecs or word.lower() in word_vecs:
             embed = word_vecs[word.lower()]
-            j += 1
         else:
             embed = word_vecs['<unk>']
-            i += 1
         word_embeddings.append(embed)
 
     word_embeddings = np.array(word_embeddings)
     return word_embeddings
+
 
 def main():
     val = SquadDataset("dev")

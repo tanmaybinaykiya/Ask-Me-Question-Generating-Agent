@@ -74,7 +74,7 @@ def main():
             decoder_input, decoder_len = questions, questions.shape[1]
 
             encoder_len = torch.LongTensor(encoder_len)
-            if torch.cuda.is_available() and False:
+            if is_cuda_available:
                 encoder_len = torch.LongTensor(encoder_len).cuda()
             encoder_out, encoder_hidden = encoder(encoder_input, torch.LongTensor(encoder_len))
             decoder_hidden = encoder_hidden
