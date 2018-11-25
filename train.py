@@ -199,11 +199,8 @@ def beam_search(encoder, decoder, dev_loader, dev_idx_to_word_q):
         for i in range(len(prediction)):
             print(dev_idx_to_word_q[str(prediction[i][0])])
 
-    pass
-
 
 def train(encoder, decoder, num_epoch, batch_per_epoch, train_iter, criterion, optimizer_enc, optimizer_dec, is_cuda):
-
     losses = []
     for eachEpoch in range(num_epoch):
         total_batch_loss = 0
@@ -265,13 +262,6 @@ def main(use_cuda=False, filename_glove='data/glove.840B.300d.txt'):
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0, collate_fn=collate_fn,
                               pin_memory=True)
 
-    dev_dataset = SquadDataset(split="dev")
-    dev_idx_to_word_q = dev_dataset.get_question_idx_to_word()
-    dev_word_to_idx_q = train_dataset.get_question_word_to_idx()
-
-    dev_loader = DataLoader(
-        dev_dataset, batch_size=batch_size, shuffle=True, num_workers=0, collate_fn=collate_fn, pin_memory=True)
-
     train_iter = iter(train_loader)
 
     word_embeddings_glove_q = obtain_glove_embeddings(filename_glove, word_to_idx_q,
@@ -290,12 +280,16 @@ def main(use_cuda=False, filename_glove='data/glove.840B.300d.txt'):
 
     n_train = len(train_loader)
     batch_per_epoch = n_train // batch_size
-    n_iters = batch_per_epoch * num_epoch
 
     criterion = nn.CrossEntropyLoss(ignore_index=0)
     optimizer_enc = torch.optim.SGD(encoder.parameters(), lr=1.0)
     optimizer_dec = torch.optim.SGD(decoder.parameters(), lr=1.0)
     train(encoder, decoder, num_epoch, batch_per_epoch, train_iter, criterion, optimizer_enc, optimizer_dec, use_cuda)
+
+    dev_dataset = SquadDataset(split="dev")
+
+    dev_loader = DataLoader(
+        dev_dataset, batch_size=batch_size, shuffle=True, num_workers=0, collate_fn=collate_fn, pin_memory=True)
 
 
 if __name__ == '__main__':
