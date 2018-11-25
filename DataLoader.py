@@ -16,14 +16,18 @@ class SquadDataset(data.Dataset):
 
     paragraphs_path = './data/%s/paragraphs.json'
     question_answer_pairs_path = "./data/%s/q_a_pairs.json"
-    word_to_idx_path = "./data/%s/word_to_idx.json"
-    idx_to_word_path = "./data/%s/idx_to_word.json"
+    q_word_to_idx_path = "./data/%s/q_word_to_idx.json"
+    q_idx_to_word_path = "./data/%s/q_idx_to_word.json"
+    a_word_to_idx_path = "./data/%s/a_word_to_idx.json"
+    a_idx_to_word_path = "./data/%s/a_idx_to_word.json"
 
     def __init__(self, split):
         self.paragraphs = json.load(open(self.paragraphs_path % split, "r"))
         self.questionAnswerPairs = json.load(open(self.question_answer_pairs_path % split, "r"))
-        self.idx_to_word = json.load(open(self.idx_to_word_path % split, "r"))
-        self.word_to_idx = json.load(open(self.word_to_idx_path % split, "r"))
+        self.q_idx_to_word = json.load(open(self.q_idx_to_word_path % split, "r"))
+        self.q_word_to_idx = json.load(open(self.q_word_to_idx_path % split, "r"))
+        self.a_idx_to_word = json.load(open(self.a_idx_to_word_path % split, "r"))
+        self.a_word_to_idx = json.load(open(self.a_word_to_idx_path % split, "r"))
 
     def __len__(self):
         return len(self.questionAnswerPairs)
@@ -37,11 +41,17 @@ class SquadDataset(data.Dataset):
         #       [self.idx_to_word[str(el)] for el in val.__getitem__(index)[2]])
         return self.questionAnswerPairs[index]
 
-    def get_idx_to_word(self):
-        return self.idx_to_word
+    def get_question_idx_to_word(self):
+        return self.q_idx_to_word
 
-    def get_word_to_idx(self):
-        return self.word_to_idx
+    def get_question_word_to_idx(self):
+        return self.q_word_to_idx
+
+    def get_answer_idx_to_word(self):
+        return self.a_idx_to_word
+
+    def get_answer_word_to_idx(self):
+        return self.a_word_to_idx
 
     def get_paragraphs(self):
         return self.paragraphs

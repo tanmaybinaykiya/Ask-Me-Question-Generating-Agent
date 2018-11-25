@@ -1,3 +1,3 @@
 START_TOKEN = "<START>"
 END_TOKEN = "<END>"
-UNKNOWN = "<UNK>"
+UNKNOWN = '<unk>'
