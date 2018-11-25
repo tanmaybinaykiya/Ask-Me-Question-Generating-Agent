@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from data_loader import SquadDataset, collate_fn
+from DataLoader import SquadDataset, collate_fn
 from models import EncoderBILSTM, DecoderLSTM
 
 train_dataset = SquadDataset(split="train")

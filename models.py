@@ -1,11 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
-from torch import optim
-import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
-import os, time, sys
 
 
 class GlobalAttention(nn.Module):
@@ -28,7 +24,7 @@ class GlobalAttention(nn.Module):
         self.softmax = nn.Softmax(dim=1)
         self.tanh = nn.Tanh()
 
-    def sequence_mask(self,lengths, max_len=None):
+    def sequence_mask(self, lengths, max_len=None):
         """
         Creates a boolean mask from sequence lengths.
         """
@@ -54,11 +50,11 @@ class GlobalAttention(nn.Module):
 
         # (batch, 1, src_len)
         mask = mask.unsqueeze(1)  # Make it broadcastable.
-        #if next(self.parameters()).is_cuda:
-            #mask = mask.cuda()
+        # if next(self.parameters()).is_cuda:
+        # mask = mask.cuda()
         align.data.masked_fill_(1 - mask, -float('inf'))  # fill <pad> with -inf
 
-        align_vectors = self.softmax(align.view(batch * tgt_len, src_len)) #softmax over source scores
+        align_vectors = self.softmax(align.view(batch * tgt_len, src_len))  # softmax over source scores
         align_vectors = align_vectors.view(batch, tgt_len, src_len)
 
         # (batch, tgt_len, src_len) * (batch, src_len, enc_hidden) -> (batch, tgt_len, enc_hidden)
@@ -91,6 +87,7 @@ class GlobalAttention(nn.Module):
         # (batch, t_len, d) x (batch, d, s_len) --> (batch, t_len, s_len)
         return torch.bmm(h_t, h_s_)
 
+
 class EncoderBILSTM(nn.Module):
     def __init__(self, vocab_size, embedding_dim, hidden_dim, dropout, embeddings=None, n_layers=1):
         super(EncoderBILSTM, self).__init__()
@@ -109,8 +106,6 @@ class EncoderBILSTM(nn.Module):
         self.lstm = nn.LSTM(input_size=self.embedding_dim, hidden_size=self.hidden_dim // 2, num_layers=self.n_layers,
                             bidirectional=True, dropout=self.lstm_dropout)
 
-
-
     def forward(self, inputs, lengths, return_packed=False):
         """
         Inputs:
@@ -119,18 +114,19 @@ class EncoderBILSTM(nn.Module):
         """
         # [seq_length, batch_size, embed_length]
         embeds = self.word_embeds(inputs)
-        packed = pack_padded_sequence(embeds, lengths=lengths,batch_first=True)
+        packed = pack_padded_sequence(embeds, lengths=lengths, batch_first=True)
         outputs, hiddens = self.lstm(packed)
         if not return_packed:
-            return pad_packed_sequence(outputs,True)[0], hiddens
+            return pad_packed_sequence(outputs, True)[0], hiddens
         return outputs, hiddens
-
 
 
 class DecoderLSTM(nn.Module):
     """
     """
-    def __init__(self, vocab_size, embedding_dim, hidden_dim, n_layers=1, encoder_hidden_dim=None, embeddings=None, dropout=0.2):
+
+    def __init__(self, vocab_size, embedding_dim, hidden_dim, n_layers=1, encoder_hidden_dim=None, embeddings=None,
+                 dropout=0.2):
         super(DecoderLSTM, self).__init__()
         self.n_layers = n_layers
         self.hidden_dim = hidden_dim
@@ -147,9 +143,9 @@ class DecoderLSTM(nn.Module):
         # h_t^T W h_s
         self.linear_out = nn.Linear(hidden_dim, vocab_size)
         self.attn = GlobalAttention(encoder_hidden_dim, hidden_dim)
-        #self.dropout = nn.Dropout(dropout)
+        # self.dropout = nn.Dropout(dropout)
 
-    def forward(self, inputs, hidden, context, context_lengths,eval_mode=False):
+    def forward(self, inputs, hidden, context, context_lengths, eval_mode=False):
         """
         inputs: (tgt_len, batch_size, d)
         hidden: last hidden state from encoder
@@ -157,26 +153,27 @@ class DecoderLSTM(nn.Module):
         """
 
         embedded = self.word_embeds(inputs)
-        embedded = embedded.transpose(0,1)
+        embedded = embedded.transpose(0, 1)
         if not eval_mode:
-            decode_hidden_init = torch.cat([hidden[0][0],hidden[0][1]], 1).unsqueeze(0)
-            decode_cell_init = torch.cat([hidden[1][0],hidden[1][1]], 1).unsqueeze(0)
+            decode_hidden_init = torch.cat([hidden[0][0], hidden[0][1]], 1).unsqueeze(0)
+            decode_cell_init = torch.cat([hidden[1][0], hidden[1][1]], 1).unsqueeze(0)
         else:
-            decode_hidden_init=hidden[0]
-            decode_cell_init=hidden[1]
+            decode_hidden_init = hidden[0]
+            decode_cell_init = hidden[1]
 
-        #embedded = self.dropout(embedded)
+        # embedded = self.dropout(embedded)
         decoder_unpacked, decoder_hidden = self.lstm(embedded, (decode_hidden_init, decode_cell_init))
 
         # Calculate the attention.
         attn_outputs, attn_scores = self.attn(
             decoder_unpacked.transpose(0, 1).contiguous(),  # (len, batch, d) -> (batch, len, d)
-            context,# (len, batch, d) -> (batch, len, d)
+            context,  # (len, batch, d) -> (batch, len, d)
             context_lengths=context_lengths
         )
 
         outputs = self.linear_out(attn_outputs)
         return outputs, decoder_hidden
+
 
 def obtain_glove_embeddings(filename, word_to_ix):
     vocab = [k for k, v in word_to_ix.items()]
@@ -204,7 +201,6 @@ def obtain_glove_embeddings(filename, word_to_ix):
             embed = word_vecs['<unk>']
             i += 1
         word_embeddings.append(embed)
-
 
     word_embeddings = np.array(word_embeddings)
     return word_embeddings
