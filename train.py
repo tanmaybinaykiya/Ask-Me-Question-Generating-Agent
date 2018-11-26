@@ -238,7 +238,6 @@ def train(encoder, decoder, num_epoch, batch_per_epoch, train_iter, criterion, o
             optimizer_enc.step()
             optimizer_dec.step()
             total_batch_loss += loss.item()
-            break
         losses.append(total_batch_loss)
         print("Loss for the batch is")
         print(total_batch_loss / batch_per_epoch)
