@@ -207,7 +207,7 @@ def beam_search(encoder, decoder, dev_loader, dev_idx_to_word_q):
             print(dev_idx_to_word_q[str(prediction[i][0])])
 
 
-def train(encoder, decoder, epoch_count, batch_per_epoch, train_loader, criterion, optimizer_enc, optimizer_dec, is_cuda):
+def train(encoder, decoder, epoch_count, batch_per_epoch, train_loader, criterion, optimizer_enc, optimizer_dec, is_cuda, debug=False):
     losses = []
     for epoch in range(epoch_count):
         total_batch_loss = 0
@@ -242,7 +242,7 @@ def train(encoder, decoder, epoch_count, batch_per_epoch, train_loader, criterio
             optimizer_enc = exp_lr_scheduler(optimizer_enc, epoch)
             optimizer_dec = exp_lr_scheduler(optimizer_dec, epoch)
             total_batch_loss += loss.item()
-            print("Batch Loss: %f" % loss.item())
+            if debug: print("Batch Loss: %f" % loss.item())
         losses.append(total_batch_loss)
         print("Epoch Loss: %f" % (total_batch_loss / batch_per_epoch))
         torch.save(encoder.state_dict(), "model_weights/%d-encoder.pth" % epoch)
