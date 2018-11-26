@@ -8,6 +8,7 @@ from torch.nn.utils import clip_grad_norm_
 from torch.utils.data import DataLoader
 
 from DataLoader import SquadDataset, collate_fn, GloVeEmbeddings
+from Visualization_Utils import plot_losses
 from models import EncoderBILSTM, DecoderLSTM
 
 
@@ -294,6 +295,7 @@ def main(use_cuda=True):
 
     losses = train(encoder, decoder, num_epoch, batch_per_epoch, train_iter, criterion, optimizer_enc, optimizer_dec,
                    use_cuda)
+    plot_losses(losses)
 
     # Evaluate
     dev_dataset = SquadDataset(split="dev")
