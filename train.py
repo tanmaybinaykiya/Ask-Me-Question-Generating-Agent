@@ -22,7 +22,7 @@ def exp_lr_scheduler(optimizer, epoch, lr_decay=0.1, lr_decay_epoch=8):
     return optimizer
 
 
-def greedy_search(encoder, decoder, dev_loader, use_cuda, dev_idx_to_word_q, dev_idx_to_word_a, batch_size):
+def greedy_search(encoder: EncoderBILSTM, decoder: DecoderLSTM, dev_loader: DataLoader, use_cuda: bool, dev_idx_to_word_q: dict, dev_idx_to_word_a: dict, batch_size: int) -> None:
     encoder.eval()
     decoder.eval()
     encoder.load_state_dict(torch.load("model_weights/encoder.pth"))
@@ -207,15 +207,11 @@ def beam_search(encoder, decoder, dev_loader, dev_idx_to_word_q):
             print(dev_idx_to_word_q[str(prediction[i][0])])
 
 
-def train(encoder, decoder, num_epoch, batch_per_epoch, train_iter, criterion, optimizer_enc, optimizer_dec, is_cuda):
+def train(encoder, decoder, num_epoch, batch_per_epoch, train_loader, criterion, optimizer_enc, optimizer_dec, is_cuda):
     losses = []
     for eachEpoch in range(num_epoch):
         total_batch_loss = 0
-        for eachBatch in range(batch_per_epoch):
-            # i = batch_per_epoch * eachEpoch + eachBatch + 1  # global step
-            batch = next(train_iter)
-
-            # each batch is size 1 for now
+        for batch in train_loader:
             questions, questions_org_len, answers, answers_org_len, pID = batch
             if questions.shape[1] > 1000:
                 break
@@ -269,8 +265,6 @@ def main(use_cuda=True):
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0, collate_fn=collate_fn,
                               pin_memory=True)
 
-    train_iter = iter(train_loader)
-
     word_embeddings_glove_q = GloVeEmbeddings.load_glove_embeddings(True)
     word_embeddings_glove_sent = GloVeEmbeddings.load_glove_embeddings(False)
 
@@ -293,8 +287,7 @@ def main(use_cuda=True):
     if not os.path.isdir("model_weights"):
         os.makedirs("model_weights", exist_ok=True)
 
-    losses = train(encoder, decoder, num_epoch, batch_per_epoch, train_iter, criterion, optimizer_enc, optimizer_dec,
-                   use_cuda)
+    losses = train(encoder, decoder, num_epoch, batch_per_epoch, train_loader, criterion, optimizer_enc, optimizer_dec, use_cuda)
     plot_losses(losses)
 
     # Evaluate
