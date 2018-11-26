@@ -247,7 +247,7 @@ def train(encoder, decoder, num_epoch, batch_per_epoch, train_iter, criterion, o
             optimizer_dec = exp_lr_scheduler(optimizer_dec, eachEpoch)
             total_batch_loss += loss.item()
         losses.append(total_batch_loss)
-        print("Loss for the batch is %f" % total_batch_loss / batch_per_epoch)
+        print("Loss for the batch is %f" % (total_batch_loss / batch_per_epoch))
 
     torch.save(encoder.state_dict(), "model_weights/encoder.pth")
     torch.save(decoder.state_dict(), "model_weights/decoder.pth")
