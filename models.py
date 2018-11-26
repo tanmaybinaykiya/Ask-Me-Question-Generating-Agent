@@ -1,4 +1,3 @@
-import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
@@ -31,7 +30,7 @@ class GlobalAttention(nn.Module):
         batch_size = lengths.numel()
         max_len = max_len or lengths.max()
         mask = (torch.arange(0, max_len).repeat(batch_size, 1)).lt(lengths.unsqueeze(1))
-        if torch.cuda.is_available() and False:
+        if torch.cuda.is_available():
             return mask.cuda()
         return mask
 
@@ -173,4 +172,3 @@ class DecoderLSTM(nn.Module):
 
         outputs = self.linear_out(attn_outputs)
         return outputs, decoder_hidden
-
