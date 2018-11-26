@@ -265,6 +265,7 @@ def main(use_cuda=True):
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0, collate_fn=collate_fn,
                               pin_memory=True)
 
+
     word_embeddings_glove_q = GloVeEmbeddings.load_glove_embeddings(True)
     word_embeddings_glove_sent = GloVeEmbeddings.load_glove_embeddings(False)
 
@@ -290,11 +291,17 @@ def main(use_cuda=True):
     losses = train(encoder, decoder, num_epoch, batch_per_epoch, train_loader, criterion, optimizer_enc, optimizer_dec, use_cuda)
     plot_losses(losses)
 
-    # Evaluate
     dev_dataset = SquadDataset(split="dev")
-    dev_loader = DataLoader(dev_dataset, batch_size=batch_size, shuffle=True, num_workers=0, collate_fn=collate_fn)
-    greedy_search(encoder, decoder, dev_loader, use_cuda, dev_dataset.get_question_idx_to_word(),
-                  dev_dataset.get_answer_idx_to_word(), batch_size)
+    dev_idx_to_word_q = dev_dataset.get_question_idx_to_word()
+    dev_word_to_idx_q = dev_dataset.get_question_word_to_idx()
+    dev_idx_to_word_sent = dev_dataset.get_answer_idx_to_word()
+    dev_word_to_idx_sent = dev_dataset.get_answer_word_to_idx()
+
+    dev_loader = DataLoader(dev_dataset, batch_size=batch_size, shuffle=True, num_workers=0, collate_fn=collate_fn,
+                            pin_memory=True)
+
+    greedy_search(encoder, decoder, dev_loader, use_cuda, dev_idx_to_word_q,
+                  dev_idx_to_word_sent, batch_size)
 
 
 if __name__ == '__main__':
