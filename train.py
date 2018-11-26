@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -5,9 +7,9 @@ import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 from torch.utils.data import DataLoader
 
-from DataLoader import SquadDataset, collate_fn, obtain_glove_embeddings
+from DataLoader import SquadDataset, collate_fn, GloVeEmbeddings
 from models import EncoderBILSTM, DecoderLSTM
-import os
+
 
 def exp_lr_scheduler(optimizer, epoch, lr_decay=0.1, lr_decay_epoch=8):
     """Decay learning rate by a factor of lr_decay every lr_decay_epoch epochs"""
@@ -246,13 +248,11 @@ def train(encoder, decoder, num_epoch, batch_per_epoch, train_iter, criterion, o
     return losses
 
 
-def main(use_cuda=False, filename_glove='data/glove.840B.300d.txt'):
+def main(use_cuda=False):
     use_cuda = use_cuda and torch.cuda.is_available()
 
     train_dataset = SquadDataset(split="train")
-    idx_to_word_sent = train_dataset.get_answer_idx_to_word()
     word_to_idx_sent = train_dataset.get_answer_word_to_idx()
-    idx_to_word_q = train_dataset.get_question_idx_to_word()
     word_to_idx_q = train_dataset.get_question_idx_to_word()
 
     train_vocab_size_sent = len(word_to_idx_sent)
@@ -264,17 +264,15 @@ def main(use_cuda=False, filename_glove='data/glove.840B.300d.txt'):
 
     train_iter = iter(train_loader)
 
-    word_embeddings_glove_q = obtain_glove_embeddings(filename_glove, word_to_idx_q,
-                                                      pruned_glove_filename="data/question_glove_embeddings.npy")
-    word_embeddings_glove_sent = obtain_glove_embeddings(filename_glove, word_to_idx_sent,
-                                                         pruned_glove_filename="data/answer_glove_embeddings.npy")
+    word_embeddings_glove_q = GloVeEmbeddings.load_glove_embeddings(True)
+    word_embeddings_glove_sent = GloVeEmbeddings.load_glove_embeddings(False)
 
     encoder = EncoderBILSTM(vocab_size=train_vocab_size_sent, n_layers=2, embedding_dim=300, hidden_dim=500,
                             dropout=0, embeddings=word_embeddings_glove_sent)
     decoder = DecoderLSTM(vocab_size=train_vocab_size_q, embedding_dim=300, hidden_dim=500, n_layers=1,
                           encoder_hidden_dim=500, embeddings=word_embeddings_glove_q)
 
-    if torch.cuda.is_available() and use_cuda:
+    if use_cuda:
         encoder = encoder.cuda()
         decoder = decoder.cuda()
 
@@ -284,8 +282,10 @@ def main(use_cuda=False, filename_glove='data/glove.840B.300d.txt'):
     criterion = nn.CrossEntropyLoss(ignore_index=0)
     optimizer_enc = torch.optim.SGD(encoder.parameters(), lr=1.0)
     optimizer_dec = torch.optim.SGD(decoder.parameters(), lr=1.0)
+
     if not os.path.isdir("model_weights"):
         os.makedirs("model_weights", exist_ok=True)
+
     train(encoder, decoder, num_epoch, batch_per_epoch, train_iter, criterion, optimizer_enc, optimizer_dec, use_cuda)
 
     dev_dataset = SquadDataset(split="dev")

@@ -1,15 +1,16 @@
 import json
 import os.path
+from collections import namedtuple
 
 import numpy as np
 import torch
 from torch.utils import data
 from torch.utils.data import DataLoader
 
-from constants import UNKNOWN
+from constants import DatasetPaths
 
-
-# QuestionAnswerPair = namedtuple('QuestionAnswer', ['question', 'answer', 'paragraphId'])
+# unused:: This is how QuestionAnswerPairs are stored
+QuestionAnswerPair = namedtuple('QuestionAnswer', ['question', 'answer', 'paragraphId'])
 
 
 class SquadDataset(data.Dataset):
@@ -17,31 +18,39 @@ class SquadDataset(data.Dataset):
     dev_url = ['https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v1.1.json']
     name = 'SquadDataset'
 
-    paragraphs_path = './data/%s/paragraphs.json'
-    question_answer_pairs_path = "./data/%s/q_a_pairs.json"
-    q_word_to_idx_path = "./data/%s/q_word_to_idx.json"
-    q_idx_to_word_path = "./data/%s/q_idx_to_word.json"
-    a_word_to_idx_path = "./data/%s/a_word_to_idx.json"
-    a_idx_to_word_path = "./data/%s/a_idx_to_word.json"
-
     def __init__(self, split):
-        self.paragraphs = json.load(open(self.paragraphs_path % split, "r"))
-        self.questionAnswerPairs = json.load(open(self.question_answer_pairs_path % split, "r"))
-        self.q_idx_to_word = json.load(open(self.q_idx_to_word_path % split, "r"))
-        self.q_word_to_idx = json.load(open(self.q_word_to_idx_path % split, "r"))
-        self.a_idx_to_word = json.load(open(self.a_idx_to_word_path % split, "r"))
-        self.a_word_to_idx = json.load(open(self.a_word_to_idx_path % split, "r"))
+        self.split = split
+
+        self.paragraphs_path = DatasetPaths["paragraphs_path"] % self.split
+        self.question_answer_pairs_path = DatasetPaths["qa_pairs_path"] % self.split
+        self.q_word_to_idx_path = DatasetPaths["word-to-idx-path"]["question"] % self.split
+        self.q_idx_to_word_path = DatasetPaths["idx-to-word-path"]["question"] % self.split
+        self.a_word_to_idx_path = DatasetPaths["word-to-idx-path"]["answer"] % self.split
+        self.a_idx_to_word_path = DatasetPaths["idx-to-word-path"]["answer"] % self.split
+
+        assert os.path.isfile(self.paragraphs_path), "Paragraphs file [%s] doesn't exist" % self.paragraphs_path
+        assert os.path.isfile(
+            self.question_answer_pairs_path), "qa_pairs file [%s] doesn't exist" % self.question_answer_pairs_path
+        assert os.path.isfile(
+            self.q_word_to_idx_path), "q_word_to_idx [%s] file doesn't exist" % self.q_word_to_idx_path
+        assert os.path.isfile(
+            self.q_idx_to_word_path), "q_idx_to_word [%s] file doesn't exist" % self.q_idx_to_word_path
+        assert os.path.isfile(
+            self.a_word_to_idx_path), "a_word_to_idx [%s] file doesn't exist" % self.a_word_to_idx_path
+        assert os.path.isfile(
+            self.a_idx_to_word_path), "a_idx_to_word_path [%s] file doesn't exist" % self.a_idx_to_word_path
+
+        self.paragraphs = json.load(open(self.paragraphs_path, "r"))
+        self.questionAnswerPairs = json.load(open(self.question_answer_pairs_path, "r"))
+        self.q_idx_to_word = json.load(open(self.q_idx_to_word_path, "r"))
+        self.q_word_to_idx = json.load(open(self.q_word_to_idx_path, "r"))
+        self.a_idx_to_word = json.load(open(self.a_idx_to_word_path, "r"))
+        self.a_word_to_idx = json.load(open(self.a_word_to_idx_path, "r"))
 
     def __len__(self):
         return len(self.questionAnswerPairs)
 
     def __getitem__(self, index):
-        # print("GET: Q:", self.questionAnswerPairs[index][0],
-        #       [self.idx_to_word[str(el)] for el in val.__getitem__(index)[0]])
-        # print("GET: A:", self.questionAnswerPairs[index][1],
-        #       [self.idx_to_word[str(el)] for el in val.__getitem__(index)[1]])
-        # print("GET: P:", self.questionAnswerPairs[index][2],
-        #       [self.idx_to_word[str(el)] for el in val.__getitem__(index)[2]])
         return self.questionAnswerPairs[index]
 
     def get_question_idx_to_word(self):
@@ -96,45 +105,14 @@ def collate_fn(datum):
     return src_seqs, src_lengths, trg_seqs, trg_lengths, p_id
 
 
-def obtain_glove_embeddings(glove_filename, word_to_ix, pruned_glove_filename):
-    assert os.path.isfile(glove_filename), "Glove File doesn't exist"
-    if os.path.isfile(pruned_glove_filename):
-        print("%s exists. Loading..." % pruned_glove_filename)
-        word_embeddings = np.load(pruned_glove_filename)
-    else:
-        print("%s doesn't exist. Pruning..." % pruned_glove_filename)
-        word_embeddings = prune_glove_embeddings(glove_filename, word_to_ix)
-        np.save(pruned_glove_filename, word_embeddings)
-    return word_embeddings
+class GloVeEmbeddings:
 
-
-def prune_glove_embeddings(filename, word_to_ix):
-    vocab = list(word_to_ix.keys())
-    UNK_VECTOR_REPRESENTATION = np.array([0.0] * 300)
-
-    word_vecs = {UNKNOWN: UNK_VECTOR_REPRESENTATION}
-
-    f = open(filename, encoding='utf-8')
-    for line in f:
-        try:
-            values = line.split()
-            word = values[0]
-            if word in word_to_ix:
-                word_vecs[word] = np.array(values[1:], dtype='float32')
-        except ValueError:
-            pass
-
-    word_embeddings = []
-
-    for word in vocab:
-        if word in word_vecs:
-            embed = word_vecs[word]
-        else:
-            embed = UNK_VECTOR_REPRESENTATION
-        word_embeddings.append(embed)
-
-    word_embeddings = np.array(word_embeddings)
-    return word_embeddings
+    @staticmethod
+    def load_glove_embeddings(question=True):
+        pruned_glove_filename = DatasetPaths["glove"]["question-embeddings"] if question else DatasetPaths["glove"][
+            "answer-embeddings"]
+        assert os.path.isfile(pruned_glove_filename), "Glove File[%s] doesn't exist" % pruned_glove_filename
+        return np.load(pruned_glove_filename)
 
 
 def main():

@@ -2,14 +2,30 @@ import json
 import os
 from collections import Counter
 
+import numpy as np
+
 from constants import *
 
 
 class SquadPreProcessor:
 
     def __init__(self, path, split, q_vocab_size, a_vocab_size):
+
         self.dataset_path = path
+        assert os.path.isfile(self.dataset_path), "Dataset file [%s] doesn't exist" % self.dataset_path
+
         self.split = split
+
+        self.paragraphs_path = DatasetPaths["paragraphs_path"] % self.split
+        self.qa_pairs_path = DatasetPaths["question_answer_pairs_path"] % self.split
+        self.q_word_to_idx_path = DatasetPaths["word-to-idx-path"]["question"] % self.split
+        self.q_idx_to_word_path = DatasetPaths["idx-to-word-path"]["question"] % self.split
+        self.a_word_to_idx_path = DatasetPaths["word-to-idx-path"]["answer"] % self.split
+        self.a_idx_to_word_path = DatasetPaths["idx-to-word-path"]["answer"] % self.split
+
+        if not os.path.isdir("./data/%s" % self.split):
+            os.makedirs("./data/%s" % self.split, exist_ok=True)
+
         self.q_word_to_idx = {UNKNOWN: 0, START_TOKEN: 1, END_TOKEN: 2}
         self.q_idx_to_word = {0: UNKNOWN, 1: START_TOKEN, 2: END_TOKEN}
         self.a_word_to_idx = {UNKNOWN: 0, START_TOKEN: 1, END_TOKEN: 2}
@@ -18,14 +34,6 @@ class SquadPreProcessor:
         self.a_vocab = Counter()
         self.q_vocab_size = q_vocab_size
         self.a_vocab_size = a_vocab_size
-        if not os.path.isdir("./data/%s" % self.split):
-            os.makedirs("./data/%s" % self.split, exist_ok=True)
-        self.paragraphs_path = "./data/%s/paragraphs.json" % self.split
-        self.qa_pairs_path = "./data/%s/q_a_pairs.json" % self.split
-        self.q_word_to_idx_path = "./data/%s/q_word_to_idx.json" % self.split
-        self.q_idx_to_word_path = "./data/%s/q_idx_to_word.json" % self.split
-        self.a_word_to_idx_path = "./data/%s/a_word_to_idx.json" % self.split
-        self.a_idx_to_word_path = "./data/%s/a_idx_to_word.json" % self.split
 
     @staticmethod
     def preproc_sentence(sentence):
@@ -121,15 +129,67 @@ class SquadPreProcessor:
             f.write(json.dumps(self.a_idx_to_word))
 
 
-def main():
+class GlovePreproccesor:
 
-    train = SquadPreProcessor(path="dataset/squad-train-v1.1.json", split="train", q_vocab_size=45000, a_vocab_size=28000)
+    @staticmethod
+    def obtain_glove_embeddings(glove_filename, word_to_ix, pruned_glove_filename):
+        assert os.path.isfile(glove_filename), "Glove File doesn't exist"
+        if os.path.isfile(pruned_glove_filename):
+            print("%s exists. Loading..." % pruned_glove_filename)
+            word_embeddings = np.load(pruned_glove_filename)
+        else:
+            print("%s doesn't exist. Pruning..." % pruned_glove_filename)
+            word_embeddings = GlovePreproccesor.prune_glove_embeddings(glove_filename, word_to_ix)
+            np.save(pruned_glove_filename, word_embeddings)
+        return word_embeddings
+
+    @staticmethod
+    def prune_glove_embeddings(filename, word_to_ix):
+        vocab = list(word_to_ix.keys())
+        UNK_VECTOR_REPRESENTATION = np.array([0.0] * 300)
+
+        word_vecs = {UNKNOWN: UNK_VECTOR_REPRESENTATION}
+
+        f = open(filename, encoding='utf-8')
+        for line in f:
+            try:
+                values = line.split()
+                word = values[0]
+                if word in word_to_ix:
+                    word_vecs[word] = np.array(values[1:], dtype='float32')
+            except ValueError as e:
+                print("Error occured but ignored ", e)
+
+        word_embeddings = []
+
+        for word in vocab:
+            if word in word_vecs:
+                embed = word_vecs[word]
+            else:
+                embed = UNK_VECTOR_REPRESENTATION
+            word_embeddings.append(embed)
+
+        word_embeddings = np.array(word_embeddings)
+        return word_embeddings
+
+
+def main():
+    train = SquadPreProcessor(path=DatasetPaths["squad"]["train"], split="train", q_vocab_size=45000,
+                              a_vocab_size=28000)
     paragraphs, question_answer_pairs = train.preprocess()
     train.persist(paragraphs, question_answer_pairs)
 
-    dev = SquadPreProcessor(path="dataset/squad-dev-v1.1.json", split="dev", q_vocab_size=45000, a_vocab_size=28000)
+    dev = SquadPreProcessor(path=DatasetPaths["squad"]["dev"], split="dev", q_vocab_size=45000, a_vocab_size=28000)
     paragraphs, question_answer_pairs = dev.preprocess()
     dev.persist(paragraphs, question_answer_pairs)
+
+    GlovePreproccesor().obtain_glove_embeddings(glove_filename=DatasetPaths["glove"]["original-embeddings"],
+                                                word_to_ix=train.a_word_to_idx,
+                                                pruned_glove_filename=DatasetPaths["glove"]["answer-embeddings"])
+
+    GlovePreproccesor().obtain_glove_embeddings(glove_filename=DatasetPaths["glove"]["original-embeddings"],
+                                                word_to_ix=train.q_word_to_idx,
+                                                pruned_glove_filename=DatasetPaths["glove"]["question-embeddings"])
 
 
 if __name__ == '__main__':
