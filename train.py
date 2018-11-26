@@ -1,47 +1,19 @@
+import os
+
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
-from torch import optim
 import torch.nn.functional as F
-from torch.utils import data
 from torch.nn.utils import clip_grad_norm_
-from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
-import os, time, sys, datetime, argparse, pickle, json
-
-from data_loader import SquadDataset,collate_fn
 from torch.utils.data import DataLoader
 
-from DataLoader import SquadDataset, collate_fn
+from DataLoader import SquadDataset, collate_fn, GloVeEmbeddings
 from models import EncoderBILSTM, DecoderLSTM
-
-train_dataset = SquadDataset(split="train")
-idx_to_word = train_dataset.get_idx_to_word()
-word_to_idx = train_dataset.get_word_to_idx()
-
-dev_dataset = SquadDataset(split="dev")
-
-num_epoch = 15
-batch_size = 2
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0, collate_fn=collate_fn,
-                          pin_memory=True)
-# test_loader =  DataLoader(
-#                 test_data, batch_size=batch_size, shuffle=True, num_workers=0,collate_fn=collate_fn, pin_memory=True)
-
-n_train = len(train_loader)
-batch_per_epoch = n_train // batch_size
-n_iters = batch_per_epoch * num_epoch
-
-# filename_glove = 'data/glove.840B.300d.txt'
-# word_embeddings_glove = obtain_glove_embeddings(filename_glove, train_loader.dataset.word_to_idx)
-
-train_vocab_size = len(train_loader.dataset.word_to_idx)
-train_iter = iter(train_loader)
 
 
 def exp_lr_scheduler(optimizer, epoch, lr_decay=0.1, lr_decay_epoch=8):
     """Decay learning rate by a factor of lr_decay every lr_decay_epoch epochs"""
-    if epoch % lr_decay_epoch:
+    if epoch < lr_decay_epoch:
         return optimizer
 
     for param_group in optimizer.param_groups:
@@ -49,17 +21,7 @@ def exp_lr_scheduler(optimizer, epoch, lr_decay=0.1, lr_decay_epoch=8):
     return optimizer
 
 
-encoder = EncoderBILSTM(vocab_size=train_vocab_size, n_layers=1, embedding_dim=300, hidden_dim=500,
-                        dropout=0)  # embeddings=word_embeddings_glove)
-decoder = DecoderLSTM(vocab_size=train_vocab_size, embedding_dim=300, hidden_dim=500, n_layers=1,
-                      encoder_hidden_dim=500)
-
-if torch.cuda.is_available() and False:
-    encoder = encoder.cuda()
-    decoder = decoder.cuda()
-
-
-def greedy_search():
+def greedy_search(encoder, decoder, dev_loader, use_cuda, dev_idx_to_word_q):
     encoder.eval()
     decoder.eval()
     encoder.load_state_dict(torch.load("model_weights/encoder.pth"))
@@ -67,12 +29,11 @@ def greedy_search():
 
     max_len = 30
     batch_size = 2
-    for eachBatch in range(batch_per_epoch):
-        batch = next(train_iter)
+    for batch in dev_loader:
 
         questions, questions_org_len, answers, answers_org_len, pID = batch
 
-        if torch.cuda.is_available() and False :
+        if use_cuda:
             questions = questions.cuda()
             answers = answers.cuda()
 
@@ -80,7 +41,7 @@ def greedy_search():
         decoder_input, decoder_len = questions, questions.shape[1]
 
         encoder_len = torch.LongTensor(encoder_len)
-        if torch.cuda.is_available() and False :
+        if use_cuda:
             encoder_len = torch.LongTensor(encoder_len).cuda()
         encoder_out, encoder_hidden = encoder(encoder_input, torch.LongTensor(encoder_len))
         decoder_hidden = encoder_hidden
@@ -101,35 +62,29 @@ def greedy_search():
             predicted_sequences.append(prediction)
             decoder_inp = prediction.clone()
             eval_mode = True
-        given_sentence = [[idx_to_word[str(answers[i][j].item())] for j in range(len(answers[i])) if answers[i][j] != 0]
-                          for i in range(len(answers))]
+        given_sentence = [
+            [dev_idx_to_word_q[str(answers[i][j].item())] for j in range(len(answers[i])) if answers[i][j] != 0]
+            for i in range(len(answers))]
         ground_truth = [
-            [idx_to_word[str(questions[i][j].item())] for j in range(len(questions[i])) if questions[i][j] != 0] for i
+            [dev_idx_to_word_q[str(questions[i][j].item())] for j in range(len(questions[i])) if questions[i][j] != 0]
+            for i
             in range(len(questions))]
         predicted_sequences = [
-            [idx_to_word[str(predicted_sequences[j][i][0].item())] for j in range(len(predicted_sequences)) if
-             idx_to_word[str(predicted_sequences[j][i][0].item())] != '<EOS>'] \
-            for i in range(batch_size)]
+            [dev_idx_to_word_q[str(predicted_sequences[j][i][0].item())] for j in range(len(predicted_sequences)) if
+             dev_idx_to_word_q[str(predicted_sequences[j][i][0].item())] != '<EOS>'] for i in range(batch_size)]
 
-        for i in range(len(given_sentence)):
-            print("The given statement is")
-            print(" ".join(given_sentence[i]))
-            print("The ground truth is ")
-            print(" ".join(ground_truth[i]))
-            print("The predicted question is")
-            print(" ".join(predicted_sequences[i]))
+        for sent, gt, pred in zip(given_sentence, ground_truth, predicted_sequences):
+            print("Given: %s \n GT: %s \n Predicted Question: %s" % (sent, gt, pred))
 
 
-def beam_search():
+def beam_search(encoder, decoder, dev_loader, dev_idx_to_word_q):
     batch_size = 2
     beam_span = 5
     # encoder.load_state_dict(torch.load("model_weights/encoder.pth"))
     # decoder.load_state_dict(torch.load("model_weights/decoder.pth"))
     encoder.eval()
     decoder.eval()
-    for eachBatch in range(batch_per_epoch):
-        batch = next(train_iter)
-
+    for batch in dev_loader:
         questions, questions_org_len, answers, answers_org_len, pID = batch
 
         if torch.cuda.is_available():
@@ -244,42 +199,32 @@ def beam_search():
         prediction = prediction[::-1]
         print(prediction)
         for i in range(len(prediction)):
-            print(idx_to_word[str(prediction[i][0])])
-
-    pass
+            print(dev_idx_to_word_q[str(prediction[i][0])])
 
 
-# greedy_search()
-# beam_search()
-criterion = nn.CrossEntropyLoss(ignore_index=0)
-optimizer_enc = torch.optim.SGD(encoder.parameters(), lr=1.0)
-optimizer_dec = torch.optim.SGD(decoder.parameters(), lr=1.0)
-
-
-def train():
-    total_batch_loss = 0
+def train(encoder, decoder, num_epoch, batch_per_epoch, train_iter, criterion, optimizer_enc, optimizer_dec, is_cuda):
+    losses = []
     for eachEpoch in range(num_epoch):
+        total_batch_loss = 0
         for eachBatch in range(batch_per_epoch):
-            i = batch_per_epoch * eachEpoch + eachBatch + 1  # global step
+            # i = batch_per_epoch * eachEpoch + eachBatch + 1  # global step
             batch = next(train_iter)
+
             # each batch is size 1 for now
-
             questions, questions_org_len, answers, answers_org_len, pID = batch
-
-            if torch.cuda.is_available() and False:
+            if questions.shape[1]>1000:
+                break
+            if is_cuda:
                 questions=questions.cuda()
                 answers=answers.cuda()
-
-            # answer = torch.stack(answers,answers_org_len)
-            # answer = torch.autograd.Variable(answers)
-
-            # question = torch.stack(question)
-            # question = torch.autograd.Variable(question)
 
             encoder_input, encoder_len = answers, answers_org_len
             decoder_input, decoder_len = questions, questions.shape[1]
 
-            encoder_out, encoder_hidden = encoder(encoder_input, torch.LongTensor(encoder_len).cuda())
+            if is_cuda:
+                encoder_out, encoder_hidden = encoder(encoder_input, torch.LongTensor(encoder_len).cuda())
+            else:
+                encoder_out, encoder_hidden = encoder(encoder_input, torch.LongTensor(encoder_len))
             decoder_out, decoder_hidden = decoder(decoder_input[:, :-1], encoder_hidden, encoder_out,
                                                   torch.FloatTensor(answers_org_len))
 
@@ -289,18 +234,80 @@ def train():
             optimizer_enc.zero_grad()
             optimizer_dec.zero_grad()
             loss.backward()
-            clip_grad_norm_(encoder.parameters(),5)
+            clip_grad_norm_(encoder.parameters(), 5)
             clip_grad_norm_(decoder.parameters(), 5)
             optimizer_enc.step()
             optimizer_dec.step()
+            optimizer_enc = exp_lr_scheduler(optimizer_enc, eachEpoch)
+            optimizer_dec = exp_lr_scheduler(optimizer_dec, eachEpoch)
             total_batch_loss += loss.item()
-
-            break
+        losses.append(total_batch_loss)
         print("Loss for the batch is")
         print(total_batch_loss / batch_per_epoch)
 
     torch.save(encoder.state_dict(), "model_weights/encoder.pth")
     torch.save(decoder.state_dict(), "model_weights/decoder.pth")
+    return losses
 
 
-train()
+def main(use_cuda=False):
+    use_cuda = use_cuda and torch.cuda.is_available()
+
+    train_dataset = SquadDataset(split="train")
+    word_to_idx_sent = train_dataset.get_answer_word_to_idx()
+    idx_to_word_q = train_dataset.get_question_idx_to_word()
+    word_to_idx_q = train_dataset.get_question_idx_to_word()
+
+    train_vocab_size_sent = len(word_to_idx_sent)
+    train_vocab_size_q = len(word_to_idx_q)
+    num_epoch = 15
+    batch_size = 64
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0, collate_fn=collate_fn,
+                              pin_memory=True)
+
+    dev_dataset = SquadDataset(split="dev")
+    dev_idx_to_word_q=dev_dataset.get_question_idx_to_word()
+    dev_word_to_idx_q=train_dataset.get_question_word_to_idx()
+
+    dev_loader = DataLoader(
+        dev_dataset, batch_size=batch_size, shuffle=True, num_workers=0, collate_fn=collate_fn, pin_memory=True)
+
+    train_iter = iter(train_loader)
+
+    word_embeddings_glove_q = GloVeEmbeddings.load_glove_embeddings(True)
+    word_embeddings_glove_sent = GloVeEmbeddings.load_glove_embeddings(False)
+
+    encoder = EncoderBILSTM(vocab_size=train_vocab_size_sent, n_layers=2, embedding_dim=300, hidden_dim=500,
+                            dropout=0, embeddings=word_embeddings_glove_sent)
+    decoder = DecoderLSTM(vocab_size=train_vocab_size_q, embedding_dim=300, hidden_dim=500, n_layers=1,
+                          encoder_hidden_dim=500, embeddings=word_embeddings_glove_q)
+
+    encoder = EncoderBILSTM(vocab_size=train_vocab_size_sent, n_layers=2, embedding_dim=300, hidden_dim=600,
+                            dropout=0.3, embeddings=word_embeddings_glove_sent)
+    decoder = DecoderLSTM(vocab_size=train_vocab_size_q, embedding_dim=300, hidden_dim=600, n_layers=1,
+                          encoder_hidden_dim=600, embeddings=word_embeddings_glove_q)
+
+    if torch.cuda.is_available() and USE_CUDA:
+        encoder = encoder.cuda()
+        decoder = decoder.cuda()
+
+    n_train = len(train_loader)
+    batch_per_epoch = n_train // batch_size
+
+    criterion = nn.CrossEntropyLoss(ignore_index=0)
+    optimizer_enc = torch.optim.SGD(encoder.parameters(), lr=1.0)
+    optimizer_dec = torch.optim.SGD(decoder.parameters(), lr=1.0)
+
+    if not os.path.isdir("model_weights"):
+        os.makedirs("model_weights", exist_ok=True)
+
+    train(encoder, decoder, num_epoch, batch_per_epoch, train_iter, criterion, optimizer_enc, optimizer_dec, use_cuda)
+
+    dev_dataset = SquadDataset(split="dev")
+
+    dev_loader = DataLoader(
+        dev_dataset, batch_size=batch_size, shuffle=True, num_workers=0, collate_fn=collate_fn, pin_memory=True)
+
+
+if __name__ == '__main__':
+    main()
