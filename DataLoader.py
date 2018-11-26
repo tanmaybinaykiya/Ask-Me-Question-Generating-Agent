@@ -21,8 +21,8 @@ class SquadDataset(data.Dataset):
     def __init__(self, split):
         self.split = split
 
-        self.paragraphs_path = DatasetPaths["paragraphs_path"] % self.split
-        self.question_answer_pairs_path = DatasetPaths["qa_pairs_path"] % self.split
+        self.paragraphs_path = DatasetPaths["paragraphs-path"] % self.split
+        self.question_answer_pairs_path = DatasetPaths["question-answer-pairs-path"] % self.split
         self.q_word_to_idx_path = DatasetPaths["word-to-idx-path"]["question"] % self.split
         self.q_idx_to_word_path = DatasetPaths["idx-to-word-path"]["question"] % self.split
         self.a_word_to_idx_path = DatasetPaths["word-to-idx-path"]["answer"] % self.split

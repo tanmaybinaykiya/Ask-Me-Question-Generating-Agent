@@ -3,8 +3,8 @@ END_TOKEN = "<END>"
 UNKNOWN = '<unk>'
 
 DatasetPaths = {
-    "paragraphs_path": './data/%s/paragraphs.json',
-    "question_answer_pairs_path": "./data/%s/q_a_pairs.json",
+    "paragraphs-path": './data/%s/paragraphs.json',
+    "question-answer-pairs-path": "./data/%s/q_a_pairs.json",
     "glove": {
         "original-embeddings": "data/glove.840B.300d.txt",
         "answer-embeddings": "data/answer_glove_embeddings.npy",
