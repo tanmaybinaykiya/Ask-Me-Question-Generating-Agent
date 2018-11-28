@@ -256,7 +256,7 @@ def main(use_cuda=True):
     train_dataset = SquadDataset(split="train")
     word_to_idx_sent = train_dataset.get_answer_word_to_idx()
     idx_to_word_q = train_dataset.get_question_idx_to_word()
-    word_to_idx_q = train_dataset.get_question_idx_to_word()
+    word_to_idx_q = train_dataset.get_question_word_to_idx()
 
     train_vocab_size_sent = len(word_to_idx_sent)
     train_vocab_size_q = len(word_to_idx_q)
