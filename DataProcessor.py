@@ -36,6 +36,14 @@ class SquadPreProcessor:
         self.a_vocab_size = a_vocab_size
 
     @staticmethod
+    def create_small_dataset():
+        file = open("dataset/squad-train-v1.1.json")
+        jsons = json.load(file)
+        jsons["data"] = jsons["data"][5:10]
+
+        with open("dataset/squad-train-v1.1-smaller.json", "w") as f:
+            f.write(json.dumps(jsons))
+    @staticmethod
     def preproc_sentence(sentence):
         curr = [token.lower().strip(" .,") for token in sentence.split(" ")]
         curr.insert(0, START_TOKEN)
