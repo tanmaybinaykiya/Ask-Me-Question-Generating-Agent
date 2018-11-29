@@ -13,6 +13,7 @@ DatasetPaths = {
     "squad": {
         "dev": "dataset/squad-dev-v1.1.json",
         "train": "dataset/squad-train-v1.1.json",
+        "small_train":"dataset/squad-train-v1.1-smaller.json"
     },
     "word-to-idx-path": {
         "question": "./data/%s/q_word_to_idx.json",

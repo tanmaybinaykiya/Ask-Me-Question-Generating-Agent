@@ -182,8 +182,8 @@ class GlovePreproccesor:
 
 
 def main():
-    train = SquadPreProcessor(path=DatasetPaths["squad"]["train"], split="train", q_vocab_size=45000,
-                              a_vocab_size=28000)
+    train = SquadPreProcessor(path=DatasetPaths["squad"]["small_train"], split="train", q_vocab_size=5000,
+                              a_vocab_size=5000)
     paragraphs, question_answer_pairs = train.preprocess()
     train.persist(paragraphs, question_answer_pairs)
 
@@ -201,4 +201,5 @@ def main():
 
 
 if __name__ == '__main__':
+    SquadPreProcessor.create_small_dataset()
     main()
