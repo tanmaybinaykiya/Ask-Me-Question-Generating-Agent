@@ -150,9 +150,9 @@ class SquadPreProcessor:
 class GlovePreproccesor:
 
     @staticmethod
-    def obtain_glove_embeddings(glove_filename, word_to_ix, pruned_glove_filename):
+    def obtain_glove_embeddings(glove_filename, word_to_ix, pruned_glove_filename,overwrite=True):
         assert os.path.isfile(glove_filename), "Glove File doesn't exist"
-        if os.path.isfile(pruned_glove_filename):
+        if os.path.isfile(pruned_glove_filename) and not overwrite:
             print("%s exists. Loading..." % pruned_glove_filename)
             word_embeddings = np.load(pruned_glove_filename)
         else:
