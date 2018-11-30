@@ -8,6 +8,8 @@ from torch.nn.utils import clip_grad_norm_
 from torch.utils.data import DataLoader
 
 from DataLoader import SquadDataset, collate_fn, GloVeEmbeddings
+from evaluation import BleuScorer
+from evaluation import plot_losses
 from models import EncoderBILSTM, DecoderLSTM
 
 
@@ -22,7 +24,7 @@ def exp_lr_scheduler(optimizer, epoch, lr_decay=0.8, lr_decay_epoch=8):
 
 
 def greedy_search(encoder: EncoderBILSTM, decoder: DecoderLSTM, dev_loader: DataLoader, use_cuda: bool,
-                  dev_idx_to_word_q: dict, dev_idx_to_word_a: dict, batch_size: int) -> None:
+                  dev_idx_to_word_q: dict, dev_idx_to_word_a: dict, batch_size: int) -> (list, list, list):
     encoder.eval()
     decoder.eval()
     max_len = 30
@@ -64,6 +66,7 @@ def greedy_search(encoder: EncoderBILSTM, decoder: DecoderLSTM, dev_loader: Data
         predicted_sequences.append(prediction)
         decoder_inp = prediction.clone()
         eval_mode = True
+
     given_sentence = [
         [dev_idx_to_word_a[str(answers[i][j].item())] for j in range(len(answers[i])) if answers[i][j] != 0]
         for i in range(len(answers))]
@@ -80,6 +83,8 @@ def greedy_search(encoder: EncoderBILSTM, decoder: DecoderLSTM, dev_loader: Data
 
     for sent, gt, pred in zip(given_sentence, ground_truth, prediction):
         print("Given: %s \nGT: %s \nPred: %s" % (sent, gt, pred))
+
+    return given_sentence, ground_truth, prediction
 
 
 def beam_search(encoder, decoder, dev_loader, dev_idx_to_word_q):
@@ -324,7 +329,7 @@ def main(use_cuda=True):
     losses = train(encoder=encoder, decoder=decoder, epoch_count=num_epoch, batch_per_epoch=batch_per_epoch,idx_to_word_q=idx_to_word_q,
                    train_loader=train_loader, criterion=criterion, optimizer_enc=optimizer_enc,
                    optimizer_dec=optimizer_dec, is_cuda=use_cuda, debug=False)
-    # plot_losses(losses)
+    plot_losses(losses)
 
     dev_dataset = SquadDataset(split="dev")
     dev_idx_to_word_q = dev_dataset.get_question_idx_to_word()
@@ -338,7 +343,9 @@ def main(use_cuda=True):
     dev_loader = DataLoader(dev_dataset, batch_size=batch_size, shuffle=True, num_workers=0, collate_fn=collate_fn,
                             pin_memory=True)
 
-    greedy_search(encoder, decoder, dev_loader, use_cuda, dev_idx_to_word_q, dev_idx_to_word_sent, batch_size)
+    given_sentence, ground_truth, prediction = greedy_search(encoder, decoder, dev_loader, use_cuda, dev_idx_to_word_q,
+                                                             dev_idx_to_word_sent, batch_size)
+    print("Bleu Score:: %f" % BleuScorer.corpus_score([ground_truth], prediction))
 
 
 if __name__ == '__main__':
