@@ -322,7 +322,7 @@ def main(use_cuda=True):
 
     if not os.path.isdir("model_weights"):
         os.makedirs("model_weights", exist_ok=True)
-    losses = train(encoder=encoder, decoder=decoder, epoch_count=num_epoch, batch_per_epoch=batch_per_epoch,
+    losses = train(encoder=encoder, decoder=decoder, epoch_count=num_epoch, batch_per_epoch=batch_per_epoch,idx_to_word_q=idx_to_word_q,
                    train_loader=train_loader, criterion=criterion, optimizer_enc=optimizer_enc,
                    optimizer_dec=optimizer_dec, is_cuda=use_cuda, debug=False)
     # plot_losses(losses)
@@ -332,6 +332,9 @@ def main(use_cuda=True):
     dev_word_to_idx_q = dev_dataset.get_question_word_to_idx()
     dev_idx_to_word_sent = dev_dataset.get_answer_idx_to_word()
     dev_word_to_idx_sent = dev_dataset.get_answer_word_to_idx()
+
+    #encoder.load_state_dict(torch.load("final-encoder.pth"))
+    #decoder.load_state_dict(torch.load("final-decoder.pth"))
 
     dev_loader = DataLoader(dev_dataset, batch_size=batch_size, shuffle=True, num_workers=0, collate_fn=collate_fn,
                             pin_memory=True)
