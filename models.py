@@ -144,25 +144,24 @@ class DecoderLSTM(nn.Module):
         self.attn = GlobalAttention(encoder_hidden_dim, hidden_dim)
         # self.dropout = nn.Dropout(dropout)
 
-    def forward(self, inputs, hidden, context, context_lengths, eval_mode=False):
+    def forward(self, inputs, hidden, context, context_lengths ,eval_mode=False):
         """
         inputs: (tgt_len, batch_size, d)
         hidden: last hidden state from encoder
         context: (src_len, batch_size, hidden_size), outputs of encoder
         """
-
         embedded = self.word_embeds(inputs)
         embedded = embedded.transpose(0, 1)
         if not eval_mode:
             decode_hidden_init = torch.cat([hidden[0][2], hidden[0][3]], 1).unsqueeze(0)
             decode_cell_init = torch.cat([hidden[1][2], hidden[1][3]], 1).unsqueeze(0)
+
         else:
             decode_hidden_init = hidden[0]
             decode_cell_init = hidden[1]
 
         # embedded = self.dropout(embedded)
         decoder_unpacked, decoder_hidden = self.lstm(embedded, (decode_hidden_init, decode_cell_init))
-
         # Calculate the attention.
         attn_outputs, attn_scores = self.attn(
             decoder_unpacked.transpose(0, 1).contiguous(),  # (len, batch, d) -> (batch, len, d)

@@ -9,6 +9,8 @@ DatasetPaths = {
         "original-embeddings": "data/glove.840B.300d.txt",
         "answer-embeddings": "data/answer_glove_embeddings.npy",
         "question-embeddings": "data/question_glove_embeddings.npy",
+        "answer-embeddings-small": "data/answer_glove_embeddings_small.npy",
+        "question-embeddings-small": "data/question_glove_embeddings_small.npy",
     },
     "squad": {
         "dev": "dataset/squad-dev-v1.1.json",
