@@ -129,7 +129,7 @@ class DecoderLSTM(nn.Module):
 
     def __init__(self, vocab_size: int, embedding_dim: int, hidden_dim: int, n_layers: int = 1,
                  encoder_hidden_dim: int = None, embeddings: np.array = None,
-                 dropout: float = 0.2):
+                 dropout:float = 0.2):
         super(DecoderLSTM, self).__init__()
         self.n_layers = n_layers
         self.hidden_dim = hidden_dim
@@ -148,7 +148,7 @@ class DecoderLSTM(nn.Module):
         self.attn = GlobalAttention(encoder_hidden_dim, hidden_dim)
         # self.dropout = nn.Dropout(dropout)
 
-    def forward(self, inputs, hidden, context, context_lengths ,eval_mode=False):
+    def forward(self, inputs, hidden, context, context_lengths, eval_mode=False):
         """
         inputs: (tgt_len, batch_size, d)
         hidden: last hidden state from encoder
