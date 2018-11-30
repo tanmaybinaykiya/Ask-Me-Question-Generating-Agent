@@ -345,7 +345,7 @@ def main(use_cuda=True):
 
     given_sentence, ground_truth, prediction = greedy_search(encoder, decoder, dev_loader, use_cuda, dev_idx_to_word_q,
                                                              dev_idx_to_word_sent, batch_size)
-    print("Bleu Score:: %f" % BleuScorer.corpus_score([ground_truth], prediction))
+    print("Bleu Score:: %f" % BleuScorer.corpus_score(ground_truth, prediction))
 
 
 if __name__ == '__main__':
