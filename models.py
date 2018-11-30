@@ -141,7 +141,7 @@ class DecoderLSTM(nn.Module):
         assert embeddings is not None
         self.word_embeds.weight.data.copy_(torch.from_numpy(embeddings))
 
-        self.lstm = nn.LSTM(input_size=embedding_dim, hidden_size=hidden_dim, num_layers=n_layers)
+        self.lstm = nn.LSTM(input_size=embedding_dim, hidden_size=hidden_dim, num_layers=n_layers, dropout=dropout)
 
         # h_t^T W h_s
         self.linear_out = nn.Linear(hidden_dim, vocab_size)
