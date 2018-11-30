@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
@@ -23,7 +24,8 @@ class GlobalAttention(nn.Module):
         self.softmax = nn.Softmax(dim=1)
         self.tanh = nn.Tanh()
 
-    def sequence_mask(self, lengths, max_len=None):
+    @staticmethod
+    def sequence_mask(lengths, max_len=None):
         """
         Creates a boolean mask from sequence lengths.
         """
@@ -88,7 +90,8 @@ class GlobalAttention(nn.Module):
 
 
 class EncoderBILSTM(nn.Module):
-    def __init__(self, vocab_size, embedding_dim, hidden_dim, dropout, embeddings=None, n_layers=1):
+    def __init__(self, vocab_size: int, embedding_dim: int, hidden_dim: int, dropout: float,
+                 embeddings: np.array = None, n_layers: int = 1):
         super(EncoderBILSTM, self).__init__()
 
         self.vocab_size = vocab_size
@@ -124,8 +127,9 @@ class DecoderLSTM(nn.Module):
     """
     """
 
-    def __init__(self, vocab_size, embedding_dim, hidden_dim, n_layers=1, encoder_hidden_dim=None, embeddings=None,
-                 dropout=0.2):
+    def __init__(self, vocab_size: int, embedding_dim: int, hidden_dim: int, n_layers: int = 1,
+                 encoder_hidden_dim: int = None, embeddings: np.array = None,
+                 dropout: float = 0.2):
         super(DecoderLSTM, self).__init__()
         self.n_layers = n_layers
         self.hidden_dim = hidden_dim

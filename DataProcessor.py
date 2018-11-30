@@ -9,19 +9,27 @@ from constants import *
 
 class SquadPreProcessor:
 
-    def __init__(self, path, split, q_vocab_size, a_vocab_size):
+    def __init__(self, path, split, q_vocab_size, a_vocab_size, paragraphs_path: str = None,
+                 question_answer_pairs_path: str = None,
+                 q_word_to_idx_path: str = None, q_idx_to_word_path: str = None, a_word_to_idx_path: str = None,
+                 a_idx_to_word_path: str = None):
 
         self.dataset_path = path
         assert os.path.isfile(self.dataset_path), "Dataset file [%s] doesn't exist" % self.dataset_path
 
         self.split = split
 
-        self.paragraphs_path = DatasetPaths["paragraphs-path"] % self.split
-        self.qa_pairs_path = DatasetPaths["question-answer-pairs-path"] % self.split
-        self.q_word_to_idx_path = DatasetPaths["word-to-idx-path"]["question"] % self.split
-        self.q_idx_to_word_path = DatasetPaths["idx-to-word-path"]["question"] % self.split
-        self.a_word_to_idx_path = DatasetPaths["word-to-idx-path"]["answer"] % self.split
-        self.a_idx_to_word_path = DatasetPaths["idx-to-word-path"]["answer"] % self.split
+        self.paragraphs_path = paragraphs_path if paragraphs_path else DatasetPaths["paragraphs-path"] % self.split
+        self.qa_pairs_path = question_answer_pairs_path if question_answer_pairs_path else DatasetPaths[
+                                                                                               "question-answer-pairs-path"] % self.split
+        self.q_word_to_idx_path = q_word_to_idx_path if q_word_to_idx_path else DatasetPaths["word-to-idx-path"][
+                                                                                    "question"] % self.split
+        self.q_idx_to_word_path = q_idx_to_word_path if q_idx_to_word_path else DatasetPaths["idx-to-word-path"][
+                                                                                    "question"] % self.split
+        self.a_word_to_idx_path = a_word_to_idx_path if a_word_to_idx_path else DatasetPaths["word-to-idx-path"][
+                                                                                    "answer"] % self.split
+        self.a_idx_to_word_path = a_idx_to_word_path if a_idx_to_word_path else DatasetPaths["idx-to-word-path"][
+                                                                                    "answer"] % self.split
 
         if not os.path.isdir("./data/%s" % self.split):
             os.makedirs("./data/%s" % self.split, exist_ok=True)
@@ -30,23 +38,24 @@ class SquadPreProcessor:
         self.q_idx_to_word = {0: UNKNOWN, 1: START_TOKEN, 2: END_TOKEN}
         self.a_word_to_idx = {UNKNOWN: 0, START_TOKEN: 1, END_TOKEN: 2}
         self.a_idx_to_word = {0: UNKNOWN, 1: START_TOKEN, 2: END_TOKEN}
-        self.q_vocab = Counter()
-        self.a_vocab = Counter()
+        self.q_vocab: Counter = Counter()
+        self.a_vocab: Counter = Counter()
         self.q_vocab_size = q_vocab_size
         self.a_vocab_size = a_vocab_size
 
     @staticmethod
-    def create_small_dataset():
-        file = open("dataset/squad-train-v1.1.json")
-        jsons = json.load(file)
-        jsons["data"] = jsons["data"][5:10]
+    def create_small_dataset(left: int = 5, right: int = 10, filename: str = "dataset/squad-train-v1.1.json",
+                             pruned_dataset_filename: str = "dataset/squad-train-v1.1-smaller.json"):
+        file = open(filename)
+        z = json.load(file)
+        z["data"] = z["data"][left:right]
 
-        with open("dataset/squad-train-v1.1-smaller.json", "w") as f:
-            f.write(json.dumps(jsons))
+        with open(pruned_dataset_filename, "w") as f:
+            f.write(json.dumps(z))
 
     @staticmethod
     def preproc_sentence(sentence):
-        curr = [token.lower().strip(" .,") for token in sentence.split(" ")]
+        curr = [token.lower().strip(" .,?") for token in sentence.split(" ")]
         curr.insert(0, START_TOKEN)
         curr.append(END_TOKEN)
         return curr
@@ -156,7 +165,6 @@ class GlovePreproccesor:
     def prune_glove_embeddings(filename, word_to_ix):
         vocab = list(word_to_ix.keys())
         UNK_VECTOR_REPRESENTATION = np.array([0.0] * 300)
-
         word_vecs = {UNKNOWN: UNK_VECTOR_REPRESENTATION}
 
         f = open(filename, encoding='utf-8')
@@ -167,7 +175,7 @@ class GlovePreproccesor:
                 if word in word_to_ix:
                     word_vecs[word] = np.array(values[1:], dtype='float32')
             except ValueError as e:
-                print("Error occured but ignored ", e)
+                print("Error occurred but ignored ", e)
 
         word_embeddings = []
 
@@ -183,8 +191,7 @@ class GlovePreproccesor:
 
 
 def main():
-    train = SquadPreProcessor(path=DatasetPaths["squad"]["train"], split="train", q_vocab_size=45000,
-                              a_vocab_size=28000)
+    train = SquadPreProcessor(path=DatasetPaths["squad"]["train"], split="train", q_vocab_size=45000, a_vocab_size=28000)
     paragraphs, question_answer_pairs = train.preprocess()
     train.persist(paragraphs, question_answer_pairs)
 
