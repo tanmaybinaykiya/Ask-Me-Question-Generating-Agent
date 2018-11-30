@@ -297,7 +297,7 @@ def main(use_cuda=True):
     train_vocab_size_sent = len(word_to_idx_sent)
     train_vocab_size_q = len(word_to_idx_q)
     num_epoch = 15
-    batch_size = 256
+    batch_size = 64
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0, collate_fn=collate_fn,
                               pin_memory=True)
 
@@ -315,7 +315,6 @@ def main(use_cuda=True):
 
     n_train = len(train_loader)
     batch_per_epoch = n_train // batch_size
-
     criterion = nn.CrossEntropyLoss(ignore_index=0)
     optimizer_enc = torch.optim.RMSprop(encoder.parameters(), lr=0.0001)
     optimizer_dec = torch.optim.RMSprop(decoder.parameters(), lr=0.0001)
@@ -333,8 +332,8 @@ def main(use_cuda=True):
     dev_idx_to_word_sent = dev_dataset.get_answer_idx_to_word()
     dev_word_to_idx_sent = dev_dataset.get_answer_word_to_idx()
 
-    #encoder.load_state_dict(torch.load("final-encoder.pth"))
-    #decoder.load_state_dict(torch.load("final-decoder.pth"))
+    #encoder.load_state_dict(torch.load("model_weights/4-encoder.pth"))
+    #decoder.load_state_dict(torch.load("model_weights/4-decoder.pth"))
 
     dev_loader = DataLoader(dev_dataset, batch_size=batch_size, shuffle=True, num_workers=0, collate_fn=collate_fn,
                             pin_memory=True)

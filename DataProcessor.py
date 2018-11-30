@@ -191,7 +191,7 @@ class GlovePreproccesor:
 
 
 def main():
-    SquadPreProcessor.create_small_dataset(left=10,right=200)
+    SquadPreProcessor.create_small_dataset(left=10,right=150)
     train = SquadPreProcessor(path=DatasetPaths["squad"]["small_train"], split="train", q_vocab_size=6000, a_vocab_size=12000)
 
     paragraphs, question_answer_pairs = train.preprocess()
@@ -203,11 +203,11 @@ def main():
 
     GlovePreproccesor().obtain_glove_embeddings(glove_filename=DatasetPaths["glove"]["original-embeddings"],
                                                 word_to_ix=train.a_word_to_idx,
-                                                pruned_glove_filename=DatasetPaths["glove"]["answer-embeddings"])
+                                                pruned_glove_filename=DatasetPaths["glove"]["answer-embeddings-small"])
 
     GlovePreproccesor().obtain_glove_embeddings(glove_filename=DatasetPaths["glove"]["original-embeddings"],
                                                 word_to_ix=train.q_word_to_idx,
-                                                pruned_glove_filename=DatasetPaths["glove"]["question-embeddings"])
+                                                pruned_glove_filename=DatasetPaths["glove"]["question-embeddings-small"])
 
 
 if __name__ == '__main__':

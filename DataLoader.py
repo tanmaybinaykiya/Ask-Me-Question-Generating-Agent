@@ -106,7 +106,7 @@ class GloVeEmbeddings:
 
     @staticmethod
     def load_glove_embeddings(question=True):
-        pruned_glove_filename = DatasetPaths["glove"]["question-embeddings"] if question else DatasetPaths["glove"]["answer-embeddings"]
+        pruned_glove_filename = DatasetPaths["glove"]["question-embeddings-small"] if question else DatasetPaths["glove"]["answer-embeddings-small"]
         assert os.path.isfile(pruned_glove_filename), "Glove File[%s] doesn't exist" % pruned_glove_filename
         return np.load(pruned_glove_filename)
 
