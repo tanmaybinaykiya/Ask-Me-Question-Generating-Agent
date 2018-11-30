@@ -191,11 +191,13 @@ class GlovePreproccesor:
 
 
 def main():
-    train = SquadPreProcessor(path=DatasetPaths["squad"]["train"], split="train", q_vocab_size=45000, a_vocab_size=28000)
+    SquadPreProcessor.create_small_dataset(left=10,right=200)
+    train = SquadPreProcessor(path=DatasetPaths["squad"]["small_train"], split="train", q_vocab_size=6000, a_vocab_size=12000)
+
     paragraphs, question_answer_pairs = train.preprocess()
     train.persist(paragraphs, question_answer_pairs)
 
-    dev = SquadPreProcessor(path=DatasetPaths["squad"]["dev"], split="dev", q_vocab_size=45000, a_vocab_size=28000)
+    dev = SquadPreProcessor(path=DatasetPaths["squad"]["dev"], split="dev", q_vocab_size=6000, a_vocab_size=12000)
     paragraphs, question_answer_pairs = dev.preprocess()
     dev.persist(paragraphs, question_answer_pairs)
 
