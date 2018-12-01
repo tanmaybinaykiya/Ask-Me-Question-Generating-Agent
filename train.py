@@ -22,7 +22,7 @@ def exp_lr_scheduler(optimizer, epoch, lr_decay=0.5, lr_decay_epoch=8):
     return optimizer
 
 
-def greedy_search(encoder: EncoderBILSTM, decoder: DecoderLSTM, dataset: torch.data.Dataset, use_cuda: bool, batch_size: int) -> (list, list, list):
+def greedy_search(encoder: EncoderBILSTM, decoder: DecoderLSTM, dataset: torch.utils.data.Dataset, use_cuda: bool, batch_size: int) -> (list, list, list):
     q_idx_to_word = dataset.get_question_idx_to_word()
     a_idx_to_word = dataset.get_answer_idx_to_word()
     data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn, pin_memory=True)
