@@ -13,7 +13,7 @@ from evaluation import plot_losses
 from models import EncoderBILSTM, DecoderLSTM
 
 
-def exp_lr_scheduler(optimizer, epoch, lr_decay=0.8, lr_decay_epoch=8):
+def exp_lr_scheduler(optimizer, epoch, lr_decay=0.5, lr_decay_epoch=8):
     """Decay learning rate by a factor of lr_decay every lr_decay_epoch epochs"""
     if epoch < lr_decay_epoch:
         return optimizer
@@ -78,6 +78,7 @@ def greedy_search(encoder: EncoderBILSTM, decoder: DecoderLSTM, dev_loader: Data
         prediction.append([])
         for j in range(len(predicted_sequences)):
             if dev_idx_to_word_q[str(predicted_sequences[j][i][0].item())] == '<END>':
+                prediction[i].append("<END>")
                 break
             prediction[i].append(dev_idx_to_word_q[str(predicted_sequences[j][i][0].item())])
 
@@ -269,15 +270,15 @@ def train(encoder, decoder, epoch_count, batch_per_epoch, train_loader, criterio
             optimizer_dec.zero_grad()
 
             loss.backward()
-            clip_grad_norm_(encoder.parameters(), 5)
-            clip_grad_norm_(decoder.parameters(), 5)
+            #clip_grad_norm_(encoder.parameters(), 5)
+            #clip_grad_norm_(decoder.parameters(), 5)
 
             optimizer_enc.step()
             optimizer_dec.step()
 
             if lr_schedule:
-                optimizer_enc = exp_lr_scheduler(optimizer_enc, epoch)
-                optimizer_dec = exp_lr_scheduler(optimizer_dec, epoch)
+                optimizer_enc = exp_lr_scheduler(optimizer_enc, epoch,lr_decay_epoch=25)
+                optimizer_dec = exp_lr_scheduler(optimizer_dec, epoch,lr_decay_epoch=25)
 
             total_batch_loss += loss.item()
             if debug: print("Batch Loss: %f" % loss.item())
@@ -301,7 +302,7 @@ def main(use_cuda=True):
 
     train_vocab_size_sent = len(word_to_idx_sent)
     train_vocab_size_q = len(word_to_idx_q)
-    num_epoch = 15
+    num_epoch = 50
     batch_size = 64
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0, collate_fn=collate_fn,
                               pin_memory=True)
@@ -311,8 +312,12 @@ def main(use_cuda=True):
 
     encoder = EncoderBILSTM(vocab_size=train_vocab_size_sent, n_layers=2, embedding_dim=300, hidden_dim=600,
                             dropout=0.3, embeddings=word_embeddings_glove_sent)
-    decoder = DecoderLSTM(vocab_size=train_vocab_size_q, embedding_dim=300, hidden_dim=600, n_layers=1,
+    decoder = DecoderLSTM(vocab_size=train_vocab_size_q, embedding_dim=300, hidden_dim=600, n_layers=2,dropout=0.3,
                           encoder_hidden_dim=600, embeddings=word_embeddings_glove_q)
+
+    #encoder.load_state_dict(torch.load("model_weights/final-encoder.pth"))
+    #decoder.load_state_dict(torch.load("model_weights/final-decoder.pth"))
+
 
     if use_cuda:
         encoder = encoder.cuda()
@@ -321,15 +326,16 @@ def main(use_cuda=True):
     n_train = len(train_loader)
     batch_per_epoch = n_train // batch_size
     criterion = nn.CrossEntropyLoss(ignore_index=0)
-    optimizer_enc = torch.optim.RMSprop(encoder.parameters(), lr=0.0001)
-    optimizer_dec = torch.optim.RMSprop(decoder.parameters(), lr=0.0001)
+    optimizer_enc = torch.optim.Adam(encoder.parameters(), lr=0.0005)
+    optimizer_dec = torch.optim.Adam(decoder.parameters(), lr=0.0005)
 
     if not os.path.isdir("model_weights"):
         os.makedirs("model_weights", exist_ok=True)
+
     losses = train(encoder=encoder, decoder=decoder, epoch_count=num_epoch, batch_per_epoch=batch_per_epoch,idx_to_word_q=idx_to_word_q,
                    train_loader=train_loader, criterion=criterion, optimizer_enc=optimizer_enc,
-                   optimizer_dec=optimizer_dec, is_cuda=use_cuda, debug=False)
-    plot_losses(losses)
+                   optimizer_dec=optimizer_dec, is_cuda=use_cuda, debug=False,lr_schedule=True)
+    #plot_losses(losses)
 
     dev_dataset = SquadDataset(split="dev")
     dev_idx_to_word_q = dev_dataset.get_question_idx_to_word()
@@ -337,14 +343,16 @@ def main(use_cuda=True):
     dev_idx_to_word_sent = dev_dataset.get_answer_idx_to_word()
     dev_word_to_idx_sent = dev_dataset.get_answer_word_to_idx()
 
-    #encoder.load_state_dict(torch.load("model_weights/4-encoder.pth"))
-    #decoder.load_state_dict(torch.load("model_weights/4-decoder.pth"))
-
     dev_loader = DataLoader(dev_dataset, batch_size=batch_size, shuffle=True, num_workers=0, collate_fn=collate_fn,
                             pin_memory=True)
 
-    given_sentence, ground_truth, prediction = greedy_search(encoder, decoder, dev_loader, use_cuda, dev_idx_to_word_q,
-                                                             dev_idx_to_word_sent, batch_size)
+    given_sentence, ground_truth, prediction = greedy_search(encoder, decoder, train_loader, use_cuda,
+                                                             idx_to_word_q,
+                                                             idx_to_word_sent, batch_size)
+    print("Bleu Score:: %f" % BleuScorer.corpus_score(ground_truth, prediction))
+
+    given_sentence, ground_truth, prediction = greedy_search(encoder, decoder, dev_loader, use_cuda, idx_to_word_q,
+                                                             idx_to_word_sent, batch_size)
     print("Bleu Score:: %f" % BleuScorer.corpus_score(ground_truth, prediction))
 
 
