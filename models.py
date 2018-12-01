@@ -101,7 +101,7 @@ class EncoderBILSTM(nn.Module):
         self.lstm_dropout = dropout
 
         self.word_embeds = nn.Embedding(self.vocab_size, self.embedding_dim)
-        self.word_embeds.requires_grad=False
+
         if embeddings is not None:
             self.word_embeds.weight.data.copy_(torch.from_numpy(embeddings))
 
@@ -158,8 +158,6 @@ class DecoderLSTM(nn.Module):
         """
         embedded = self.word_embeds(inputs)
         embedded = embedded.transpose(0, 1)
-
-
         if not eval_mode:
             if self.n_layers==2:
                 decode_hidden_init = torch.stack((torch.cat([hidden[0][0], hidden[0][1]],1),torch.cat([hidden[0][2], hidden[0][3]], 1)),0)
