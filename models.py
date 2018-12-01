@@ -135,15 +135,13 @@ class DecoderLSTM(nn.Module):
         self.hidden_dim = hidden_dim
         self.vocab_size = vocab_size
         self.embedding_dim = embedding_dim
-        self.lstm_dropout=dropout
 
         self.word_embeds = nn.Embedding(self.vocab_size, self.embedding_dim)
 
         assert embeddings is not None
         self.word_embeds.weight.data.copy_(torch.from_numpy(embeddings))
-        self.word_embeds.requires_grad=False
 
-        self.lstm = nn.LSTM(input_size=embedding_dim, hidden_size=hidden_dim, num_layers=n_layers,dropout=self.lstm_dropout)
+        self.lstm = nn.LSTM(input_size=embedding_dim, hidden_size=hidden_dim, num_layers=n_layers, dropout=dropout)
 
         # h_t^T W h_s
         self.linear_out = nn.Linear(hidden_dim, vocab_size)
@@ -159,20 +157,15 @@ class DecoderLSTM(nn.Module):
         embedded = self.word_embeds(inputs)
         embedded = embedded.transpose(0, 1)
         if not eval_mode:
-            if self.n_layers==2:
-                decode_hidden_init = torch.stack((torch.cat([hidden[0][0], hidden[0][1]],1),torch.cat([hidden[0][2], hidden[0][3]], 1)),0)
-                decode_cell_init = torch.stack((torch.cat([hidden[1][0], hidden[1][1]],1),torch.cat([hidden[1][2], hidden[1][3]], 1)),0)
-            else :
-                decode_hidden_init = torch.cat([hidden[0][2], hidden[0][3]], 1).unsqueeze(0)
-                decode_cell_init =torch.cat([hidden[1][2], hidden[1][3]], 1).unsqueeze(0)
+            decode_hidden_init = torch.cat([hidden[0][2], hidden[0][3]], 1).unsqueeze(0)
+            decode_cell_init = torch.cat([hidden[1][2], hidden[1][3]], 1).unsqueeze(0)
 
         else:
             decode_hidden_init = hidden[0]
             decode_cell_init = hidden[1]
 
-
         # embedded = self.dropout(embedded)
-        decoder_unpacked, decoder_hidden = self.lstm(embedded, (decode_hidden_init,decode_cell_init))
+        decoder_unpacked, decoder_hidden = self.lstm(embedded, (decode_hidden_init, decode_cell_init))
         # Calculate the attention.
         attn_outputs, attn_scores = self.attn(
             decoder_unpacked.transpose(0, 1).contiguous(),  # (len, batch, d) -> (batch, len, d)
