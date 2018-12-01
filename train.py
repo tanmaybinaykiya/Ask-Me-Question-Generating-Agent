@@ -213,7 +213,7 @@ def beam_search(encoder, decoder, dev_loader, dev_idx_to_word_q):
 
 
 def train(encoder, decoder, epoch_count, batch_per_epoch, train_loader, criterion, optimizer_enc, optimizer_dec,
-          is_cuda, idx_to_word_q, batch_size=32, teacher_forcing=False, debug=False, lr_schedule=False):
+          is_cuda, idx_to_word_q, batch_size=32, teacher_forcing=False, debug=False, lr_schedule=False, start_epoch_at=0):
     losses = []
     for epoch in range(epoch_count):
         total_batch_loss = 0
@@ -269,8 +269,8 @@ def train(encoder, decoder, epoch_count, batch_per_epoch, train_loader, criterio
             optimizer_dec.zero_grad()
 
             loss.backward()
-            clip_grad_norm_(encoder.parameters(), 5)
-            clip_grad_norm_(decoder.parameters(), 5)
+            # clip_grad_norm_(encoder.parameters(), 5)
+            # clip_grad_norm_(decoder.parameters(), 5)
 
             optimizer_enc.step()
             optimizer_dec.step()
@@ -283,8 +283,8 @@ def train(encoder, decoder, epoch_count, batch_per_epoch, train_loader, criterio
             if debug: print("Batch Loss: %f" % loss.item())
         losses.append(total_batch_loss)
         print("Epoch Loss: %f" % (total_batch_loss))
-        torch.save(encoder.state_dict(), "model_weights/%d-encoder.pth" % epoch)
-        torch.save(decoder.state_dict(), "model_weights/%d-decoder.pth" % epoch)
+        torch.save(encoder.state_dict(), "model_weights/%d-encoder.pth" % (start_epoch_at+epoch))
+        torch.save(decoder.state_dict(), "model_weights/%d-decoder.pth" % (start_epoch_at+epoch))
     torch.save(encoder.state_dict(), "model_weights/final-encoder.pth")
     torch.save(decoder.state_dict(), "model_weights/final-decoder.pth")
     return losses
