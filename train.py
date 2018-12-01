@@ -282,7 +282,7 @@ def train(encoder: EncoderBILSTM, decoder: DecoderLSTM, epoch_count: int, train_
             total_batch_loss += loss.item()
             if debug: print("Batch Loss: %f" % loss.item())
         losses.append(total_batch_loss)
-        print("Epoch[%d] Loss: %f" % (epoch, total_batch_loss))
+        print("Epoch[%d] Loss: %f" % (start_epoch_at + epoch, total_batch_loss))
         torch.save(encoder.state_dict(), "model_weights/%d-encoder.pth" % (start_epoch_at + epoch))
         torch.save(decoder.state_dict(), "model_weights/%d-decoder.pth" % (start_epoch_at + epoch))
     torch.save(encoder.state_dict(), "model_weights/final-encoder.pth")
