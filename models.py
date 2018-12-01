@@ -163,8 +163,8 @@ class DecoderLSTM(nn.Module):
                 decode_hidden_init = torch.stack((torch.cat([hidden[0][0], hidden[0][1]],1),torch.cat([hidden[0][2], hidden[0][3]], 1)),0)
                 decode_cell_init = torch.stack((torch.cat([hidden[1][0], hidden[1][1]],1),torch.cat([hidden[1][2], hidden[1][3]], 1)),0)
             else :
-                decode_hidden_init = torch.cat([hidden[0][0], hidden[0][1]], 1).unsqueeze(0)
-                decode_cell_init =torch.cat([hidden[1][0], hidden[1][1]], 1).unsqueeze(0)
+                decode_hidden_init = torch.cat([hidden[0][2], hidden[0][3]], 1).unsqueeze(0)
+                decode_cell_init =torch.cat([hidden[1][2], hidden[1][3]], 1).unsqueeze(0)
 
         else:
             decode_hidden_init = hidden[0]
