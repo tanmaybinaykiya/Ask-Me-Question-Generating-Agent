@@ -9,8 +9,9 @@ from constants import *
 
 class SquadPreProcessor:
 
-    def __init__(self, path, split, q_vocab_size, a_vocab_size, paragraphs_path: str = None,
-                 question_answer_pairs_path: str = None,
+    def __init__(self, path, split, q_vocab_size: int=float("inf"), a_vocab_size: int=float("inf"),
+                 paragraphs_path: str = None, question_answer_pairs_path: str = None,
+                 q_word_idx_map=None, a_word_idx_map=None, q_idx_word_map=None, a_idx_word_map=None,
                  q_word_to_idx_path: str = None, q_idx_to_word_path: str = None, a_word_to_idx_path: str = None,
                  a_idx_to_word_path: str = None):
 
@@ -34,10 +35,19 @@ class SquadPreProcessor:
         if not os.path.isdir("./data/%s" % self.split):
             os.makedirs("./data/%s" % self.split, exist_ok=True)
 
-        self.q_word_to_idx = {UNKNOWN: 0, START_TOKEN: 1, END_TOKEN: 2}
-        self.q_idx_to_word = {0: UNKNOWN, 1: START_TOKEN, 2: END_TOKEN}
-        self.a_word_to_idx = {UNKNOWN: 0, START_TOKEN: 1, END_TOKEN: 2}
-        self.a_idx_to_word = {0: UNKNOWN, 1: START_TOKEN, 2: END_TOKEN}
+        if q_word_idx_map and a_word_idx_map and q_idx_word_map and a_idx_word_map:
+            self.q_word_to_idx = q_word_idx_map.copy()
+            self.q_idx_to_word = q_idx_word_map.copy()
+            self.a_word_to_idx = a_word_idx_map.copy()
+            self.a_idx_to_word = a_idx_word_map.copy()
+            self.compute_idx_word_map = False
+        else:
+            self.q_word_to_idx = {UNKNOWN: 0, START_TOKEN: 1, END_TOKEN: 2}
+            self.q_idx_to_word = {0: UNKNOWN, 1: START_TOKEN, 2: END_TOKEN}
+            self.a_word_to_idx = {UNKNOWN: 0, START_TOKEN: 1, END_TOKEN: 2}
+            self.a_idx_to_word = {0: UNKNOWN, 1: START_TOKEN, 2: END_TOKEN}
+            self.compute_idx_word_map = True
+
         self.q_vocab: Counter = Counter()
         self.a_vocab: Counter = Counter()
         self.q_vocab_size = q_vocab_size
@@ -101,35 +111,52 @@ class SquadPreProcessor:
         paragraphs = {}
         question_answer_pairs = []
 
-        for datum_id, datum in enumerate(data):
-            for para_id, para in enumerate(datum["paragraphs"]):
-                periods = [idx for idx, char in enumerate(para["context"]) if char == '.']
-                for qa in para["qas"]:
-                    q_s = SquadPreProcessor.preproc_sentence(qa['question'])
-                    a_s = SquadPreProcessor.preproc_sentence(
-                        (SquadPreProcessor.get_sentence(para["context"], periods, qa["answers"][0]["answer_start"])))
-                    self.q_vocab.update(q_s)
-                    self.a_vocab.update(a_s)
+        if self.compute_idx_word_map:
+            for datum_id, datum in enumerate(data):
+                for para_id, para in enumerate(datum["paragraphs"]):
+                    periods = [idx for idx, char in enumerate(para["context"]) if char == '.']
+                    for qa in para["qas"]:
+                        q_s = SquadPreProcessor.preproc_sentence(qa['question'])
+                        a_s = SquadPreProcessor.preproc_sentence(
+                            (SquadPreProcessor.get_sentence(para["context"], periods,
+                                                            qa["answers"][0]["answer_start"])))
+                        self.q_vocab.update(q_s)
+                        self.a_vocab.update(a_s)
 
-        self.q_vocab = {el[0]: el[1] for el in self.q_vocab.most_common(self.q_vocab_size)}
-        self.a_vocab = {el[0]: el[1] for el in self.a_vocab.most_common(self.a_vocab_size)}
+            self.q_vocab = {el[0]: el[1] for el in self.q_vocab.most_common(self.q_vocab_size)}
+            self.a_vocab = {el[0]: el[1] for el in self.a_vocab.most_common(self.a_vocab_size)}
 
-        for datum_id, datum in enumerate(data):
-            for para_id, para in enumerate(datum["paragraphs"]):
-                dict_para_id = datum_id * 1000 + para_id
-                paragraphs[dict_para_id] = para["context"]
-                periods = [idx for idx, char in enumerate(para["context"]) if char == '.']
-                for qa in para["qas"]:
-                    q_s = SquadPreProcessor.preproc_sentence(qa['question'])
-                    a_s = SquadPreProcessor.preproc_sentence(
-                        (SquadPreProcessor.get_sentence(para["context"], periods, qa["answers"][0]["answer_start"])))
+            for datum_id, datum in enumerate(data):
+                for para_id, para in enumerate(datum["paragraphs"]):
+                    dict_para_id = datum_id * 1000 + para_id
+                    paragraphs[dict_para_id] = para["context"]
+                    periods = [idx for idx, char in enumerate(para["context"]) if char == '.']
+                    for qa in para["qas"]:
+                        q_s = SquadPreProcessor.preproc_sentence(qa['question'])
+                        a_s = SquadPreProcessor.preproc_sentence(
+                            (SquadPreProcessor.get_sentence(para["context"], periods,
+                                                            qa["answers"][0]["answer_start"])))
 
-                    self.update_word_idx_map(q_s, q=True)
-                    self.update_word_idx_map(a_s, q=False)
+                        self.update_word_idx_map(q_s, q=True)
+                        self.update_word_idx_map(a_s, q=False)
 
-                    q = self.transform_to_idx(q_s, q=True)
-                    a = self.transform_to_idx(a_s, q=False)
-                    question_answer_pairs.append((q, a, dict_para_id))
+                        q = self.transform_to_idx(q_s, q=True)
+                        a = self.transform_to_idx(a_s, q=False)
+                        question_answer_pairs.append((q, a, dict_para_id))
+        else:
+            for datum_id, datum in enumerate(data):
+                for para_id, para in enumerate(datum["paragraphs"]):
+                    dict_para_id = datum_id * 1000 + para_id
+                    paragraphs[dict_para_id] = para["context"]
+                    periods = [idx for idx, char in enumerate(para["context"]) if char == '.']
+                    for qa in para["qas"]:
+                        q_s = SquadPreProcessor.preproc_sentence(qa['question'])
+                        a_s = SquadPreProcessor.preproc_sentence((SquadPreProcessor.get_sentence(para["context"],
+                                                                         periods, qa["answers"][0]["answer_start"])))
+                        q = self.transform_to_idx(q_s, q=True)
+                        a = self.transform_to_idx(a_s, q=False)
+                        question_answer_pairs.append((q, a, dict_para_id))
+
         return paragraphs, question_answer_pairs
 
     def persist(self, paragraphs, q_a_pairs):
@@ -150,7 +177,7 @@ class SquadPreProcessor:
 class GlovePreproccesor:
 
     @staticmethod
-    def obtain_glove_embeddings(glove_filename, word_to_ix, pruned_glove_filename,overwrite=True):
+    def obtain_glove_embeddings(glove_filename, word_to_ix, pruned_glove_filename, overwrite=True):
         assert os.path.isfile(glove_filename), "Glove File doesn't exist"
         if os.path.isfile(pruned_glove_filename) and not overwrite:
             print("%s exists. Loading..." % pruned_glove_filename)
@@ -191,23 +218,27 @@ class GlovePreproccesor:
 
 
 def main():
-    SquadPreProcessor.create_small_dataset(left=10,right=150)
-    train = SquadPreProcessor(path=DatasetPaths["squad"]["small_train"], split="train", q_vocab_size=6000, a_vocab_size=12000)
+    SquadPreProcessor.create_small_dataset(left=10, right=150)
+    train_ds = SquadPreProcessor(path=DatasetPaths["squad"]["small_train"], split="train", q_vocab_size=6000,
+                              a_vocab_size=12000)
 
-    paragraphs, question_answer_pairs = train.preprocess()
-    train.persist(paragraphs, question_answer_pairs)
+    paragraphs, question_answer_pairs = train_ds.preprocess()
+    train_ds.persist(paragraphs, question_answer_pairs)
 
-    dev = SquadPreProcessor(path=DatasetPaths["squad"]["dev"], split="dev", q_vocab_size=6000, a_vocab_size=12000)
+    dev = SquadPreProcessor(path=DatasetPaths["squad"]["dev"], split="dev",
+                            q_word_idx_map=train_ds.q_word_to_idx, a_word_idx_map=train_ds.a_word_to_idx,
+                            q_idx_word_map=train_ds.q_idx_to_word, a_idx_word_map=train_ds.a_idx_to_word)
     paragraphs, question_answer_pairs = dev.preprocess()
     dev.persist(paragraphs, question_answer_pairs)
 
     GlovePreproccesor().obtain_glove_embeddings(glove_filename=DatasetPaths["glove"]["original-embeddings"],
-                                                word_to_ix=train.a_word_to_idx,
+                                                word_to_ix=train_ds.a_word_to_idx,
                                                 pruned_glove_filename=DatasetPaths["glove"]["answer-embeddings-small"])
 
     GlovePreproccesor().obtain_glove_embeddings(glove_filename=DatasetPaths["glove"]["original-embeddings"],
-                                                word_to_ix=train.q_word_to_idx,
-                                                pruned_glove_filename=DatasetPaths["glove"]["question-embeddings-small"])
+                                                word_to_ix=train_ds.q_word_to_idx,
+                                                pruned_glove_filename=DatasetPaths["glove"][
+                                                    "question-embeddings-small"])
 
 
 if __name__ == '__main__':
