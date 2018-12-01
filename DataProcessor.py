@@ -231,14 +231,16 @@ def main():
     paragraphs, question_answer_pairs = dev.preprocess()
     dev.persist(paragraphs, question_answer_pairs)
 
-    GlovePreproccesor().obtain_glove_embeddings(glove_filename=DatasetPaths["glove"]["original-embeddings"],
-                                                word_to_ix=train.a_word_to_idx,
-                                                pruned_glove_filename=DatasetPaths["glove"]["answer-embeddings-small"])
+    pass
 
-    GlovePreproccesor().obtain_glove_embeddings(glove_filename=DatasetPaths["glove"]["original-embeddings"],
-                                                word_to_ix=train.q_word_to_idx,
-                                                pruned_glove_filename=DatasetPaths["glove"][
-                                                    "question-embeddings-small"])
+    # GlovePreproccesor().obtain_glove_embeddings(glove_filename=DatasetPaths["glove"]["original-embeddings"],
+    #                                             word_to_ix=train.a_word_to_idx,
+    #                                             pruned_glove_filename=DatasetPaths["glove"]["answer-embeddings-small"])
+    #
+    # GlovePreproccesor().obtain_glove_embeddings(glove_filename=DatasetPaths["glove"]["original-embeddings"],
+    #                                             word_to_ix=train.q_word_to_idx,
+    #                                             pruned_glove_filename=DatasetPaths["glove"][
+    #                                                 "question-embeddings-small"])
 
 
 if __name__ == '__main__':
