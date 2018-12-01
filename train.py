@@ -4,7 +4,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.utils import clip_grad_norm_
 from torch.utils.data import DataLoader
 
 from DataLoader import SquadDataset, collate_fn, GloVeEmbeddings
@@ -212,8 +211,9 @@ def beam_search(encoder, decoder, dev_loader, dev_idx_to_word_q):
             print(dev_idx_to_word_q[str(prediction[i][0])])
 
 
-def train(encoder, decoder, epoch_count, batch_per_epoch, train_loader, criterion, optimizer_enc, optimizer_dec,
-          is_cuda, idx_to_word_q, batch_size=32, teacher_forcing=False, debug=False, lr_schedule=False, start_epoch_at=0):
+def train(encoder: EncoderBILSTM, decoder: DecoderLSTM, epoch_count: int, train_loader: DataLoader, criterion,
+          optimizer_enc: torch.optim.Optimizer, optimizer_dec: torch.optim.Optimizer, is_cuda: bool,
+          teacher_forcing: bool = False, debug: bool = False, lr_schedule: bool = False, start_epoch_at: int = 0):
     losses = []
     for epoch in range(epoch_count):
         total_batch_loss = 0
@@ -282,9 +282,9 @@ def train(encoder, decoder, epoch_count, batch_per_epoch, train_loader, criterio
             total_batch_loss += loss.item()
             if debug: print("Batch Loss: %f" % loss.item())
         losses.append(total_batch_loss)
-        print("Epoch Loss: %f" % (total_batch_loss))
-        torch.save(encoder.state_dict(), "model_weights/%d-encoder.pth" % (start_epoch_at+epoch))
-        torch.save(decoder.state_dict(), "model_weights/%d-decoder.pth" % (start_epoch_at+epoch))
+        print("Epoch[%d] Loss: %f" % (epoch, total_batch_loss))
+        torch.save(encoder.state_dict(), "model_weights/%d-encoder.pth" % (start_epoch_at + epoch))
+        torch.save(decoder.state_dict(), "model_weights/%d-decoder.pth" % (start_epoch_at + epoch))
     torch.save(encoder.state_dict(), "model_weights/final-encoder.pth")
     torch.save(decoder.state_dict(), "model_weights/final-decoder.pth")
     return losses
@@ -326,7 +326,8 @@ def main(use_cuda=True):
 
     if not os.path.isdir("model_weights"):
         os.makedirs("model_weights", exist_ok=True)
-    losses = train(encoder=encoder, decoder=decoder, epoch_count=num_epoch, batch_per_epoch=batch_per_epoch,idx_to_word_q=idx_to_word_q,
+    losses = train(encoder=encoder, decoder=decoder, epoch_count=num_epoch, batch_per_epoch=batch_per_epoch,
+                   idx_to_word_q=idx_to_word_q,
                    train_loader=train_loader, criterion=criterion, optimizer_enc=optimizer_enc,
                    optimizer_dec=optimizer_dec, is_cuda=use_cuda, debug=False)
     plot_losses(losses)
@@ -337,8 +338,8 @@ def main(use_cuda=True):
     dev_idx_to_word_sent = dev_dataset.get_answer_idx_to_word()
     dev_word_to_idx_sent = dev_dataset.get_answer_word_to_idx()
 
-    #encoder.load_state_dict(torch.load("model_weights/4-encoder.pth"))
-    #decoder.load_state_dict(torch.load("model_weights/4-decoder.pth"))
+    # encoder.load_state_dict(torch.load("model_weights/4-encoder.pth"))
+    # decoder.load_state_dict(torch.load("model_weights/4-decoder.pth"))
 
     dev_loader = DataLoader(dev_dataset, batch_size=batch_size, shuffle=True, num_workers=0, collate_fn=collate_fn,
                             pin_memory=True)
