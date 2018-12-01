@@ -219,24 +219,24 @@ class GlovePreproccesor:
 
 def main():
     SquadPreProcessor.create_small_dataset(left=10, right=150)
-    train = SquadPreProcessor(path=DatasetPaths["squad"]["small_train"], split="train", q_vocab_size=6000,
+    train_ds = SquadPreProcessor(path=DatasetPaths["squad"]["small_train"], split="train", q_vocab_size=6000,
                               a_vocab_size=12000)
 
-    paragraphs, question_answer_pairs = train.preprocess()
-    train.persist(paragraphs, question_answer_pairs)
+    paragraphs, question_answer_pairs = train_ds.preprocess()
+    train_ds.persist(paragraphs, question_answer_pairs)
 
     dev = SquadPreProcessor(path=DatasetPaths["squad"]["dev"], split="dev",
-                            q_word_idx_map=train.q_word_to_idx, a_word_idx_map=train.a_word_to_idx,
-                            q_idx_word_map=train.q_idx_to_word, a_idx_word_map=train.a_idx_to_word)
+                            q_word_idx_map=train_ds.q_word_to_idx, a_word_idx_map=train_ds.a_word_to_idx,
+                            q_idx_word_map=train_ds.q_idx_to_word, a_idx_word_map=train_ds.a_idx_to_word)
     paragraphs, question_answer_pairs = dev.preprocess()
     dev.persist(paragraphs, question_answer_pairs)
 
     GlovePreproccesor().obtain_glove_embeddings(glove_filename=DatasetPaths["glove"]["original-embeddings"],
-                                                word_to_ix=train.a_word_to_idx,
+                                                word_to_ix=train_ds.a_word_to_idx,
                                                 pruned_glove_filename=DatasetPaths["glove"]["answer-embeddings-small"])
 
     GlovePreproccesor().obtain_glove_embeddings(glove_filename=DatasetPaths["glove"]["original-embeddings"],
-                                                word_to_ix=train.q_word_to_idx,
+                                                word_to_ix=train_ds.q_word_to_idx,
                                                 pruned_glove_filename=DatasetPaths["glove"][
                                                     "question-embeddings-small"])
 
