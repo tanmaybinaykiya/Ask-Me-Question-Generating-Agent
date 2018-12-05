@@ -5,18 +5,19 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-
+from torch.nn.utils import clip_grad_norm_
 from DataLoader import GloVeEmbeddings, SquadDataset, collate_fn
 from constants import *
 from evaluation import *
 from models import DecoderLSTM, EncoderBILSTM
+torch.random.manual_seed(3435)
 
 
 def exp_lr_scheduler(optimizer, epoch, lr_decay=0.5, lr_decay_epoch=8):
     """Decay learning rate by a factor of lr_decay every lr_decay_epoch epochs"""
     if epoch < lr_decay_epoch:
         return optimizer
-
+    print(epoch)
     for param_group in optimizer.param_groups:
         param_group['lr'] *= lr_decay
     return optimizer
@@ -26,61 +27,76 @@ def greedy_search(encoder: EncoderBILSTM, decoder: DecoderLSTM, dataset: torch.u
     q_idx_to_word = dataset.get_question_idx_to_word()
     a_idx_to_word = dataset.get_answer_idx_to_word()
     data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn, pin_memory=True)
-
+    given_sentence=[]
+    ground_truth=[]
+    final_prediction=[]
     encoder.eval()
     decoder.eval()
     max_len = 30
-    batch = iter(data_loader).next()
+    #batch = iter(data_loader).next()
 
-    questions, questions_org_len, answers, answers_org_len, pID = batch
+    for cnt,batch in enumerate(data_loader):
+        print(cnt)
+        if cnt>200:
+            break
+        questions, questions_org_len, answers, answers_org_len, pID = batch
 
-    if use_cuda:
-        questions = questions.cuda()
-        answers = answers.cuda()
-        answers_org_len = torch.FloatTensor(np.asarray(answers_org_len))
+        if use_cuda:
+            questions = questions.cuda()
+            answers = answers.cuda()
+            answers_org_len = torch.FloatTensor(np.asarray(answers_org_len))
 
-    encoder_input, encoder_len = answers, np.asarray(answers_org_len)
+        attn = torch.zeros(max_len, answers.shape[1])
 
-    if use_cuda:
-        encoder_len = torch.LongTensor(encoder_len).cuda()
-        decoder_inp = torch.ones((batch_size, 1), dtype=torch.long).cuda()
-    else:
-        encoder_len = torch.LongTensor(encoder_len)
-        decoder_inp = torch.ones((batch_size, 1), dtype=torch.long)
-    encoder_out, encoder_hidden = encoder(encoder_input, encoder_len)
-    decoder_hidden = encoder_hidden
-    # input to the first time step of decoder is <SOS> token.
+        encoder_input, encoder_len = answers, np.asarray(answers_org_len)
 
-    seq_len = 0
-    eval_mode = False
-    predicted_sequences = []
-    while seq_len < max_len:
-        seq_len += 1
-        decoder_out, decoder_hidden = decoder(decoder_inp, decoder_hidden, encoder_out, answers_org_len, eval_mode=eval_mode)
+        if use_cuda:
+            encoder_len = torch.LongTensor(encoder_len).cuda()
+            decoder_inp = torch.ones((batch_size, 1), dtype=torch.long).cuda()
+        else:
+            encoder_len = torch.LongTensor(encoder_len)
+            decoder_inp = torch.ones((batch_size, 1), dtype=torch.long)
+        encoder_out, encoder_hidden = encoder(encoder_input, encoder_len)
+        decoder_hidden = encoder_hidden
+        # input to the first time step of decoder is <SOS> token.
 
-        # obtaining log_softmax scores we need to minimize log softmax over a span.
-        decoder_out = decoder_out.view(batch_size, -1)
-        decoder_out = torch.nn.functional.log_softmax(decoder_out, )
-        prediction = torch.argmax(decoder_out, 1).unsqueeze(1)
-        predicted_sequences.append(prediction)
-        decoder_inp = prediction.clone()
-        eval_mode = True
+        seq_len = 0
+        eval_mode = False
+        predicted_sequences = []
+        while seq_len < max_len:
+            seq_len += 1
+            decoder_out, decoder_hidden,attn_scores = decoder(decoder_inp, decoder_hidden, encoder_out, answers_org_len, eval_mode=eval_mode)
 
-    given_sentence = [[a_idx_to_word[str(answers[i][j].item())] for j in range(len(answers[i])) if answers[i][j] != 0] for i in range(len(answers))]
-    ground_truth = [[q_idx_to_word[str(questions[i][j].item())] for j in range(len(questions[i])) if questions[i][j] != 0] for i in range(len(questions))]
-    prediction = []
-    for i in range(batch_size):
-        prediction.append([])
-        for j in range(len(predicted_sequences)):
-            if q_idx_to_word[str(predicted_sequences[j][i][0].item())] == END_TOKEN:
-                prediction[i].append(END_TOKEN)
-                break
-            prediction[i].append(q_idx_to_word[str(predicted_sequences[j][i][0].item())])
+            #attn[seq_len - 1, :] += attn_scores.squeeze().cpu().data
+            # obtaining log_softmax scores we need to minimize log softmax over a span.
+            decoder_out = decoder_out.view(batch_size, -1)
+            decoder_out = torch.nn.functional.log_softmax(decoder_out, )
+            prediction = torch.argmax(decoder_out, 1).unsqueeze(1)
+            predicted_sequences.append(prediction)
+            decoder_inp = prediction.clone()
+            eval_mode = True
 
-    for sent, gt, pred in zip(given_sentence, ground_truth, prediction):
-        print("Sentence: %s \nGT Q: %s \nPred Q: %s" % (sent, gt, pred))
+        given_sentence.extend([[a_idx_to_word[str(answers[i][j].item())] for j in range(len(answers[i])) if answers[i][j] != 0] for i in range(len(answers))])
+        ground_truth.extend([[q_idx_to_word[str(questions[i][j].item())] for j in range(len(questions[i])) if questions[i][j] != 0] for i in range(len(questions))])
+        prediction=[]
+        for i in range(batch_size):
+            prediction.append([])
+            for j in range(len(predicted_sequences)):
+                if q_idx_to_word[str(predicted_sequences[j][i][0].item())] == END_TOKEN:
+                    prediction[i].append(END_TOKEN)
+                    break
+                prediction[i].append(q_idx_to_word[str(predicted_sequences[j][i][0].item())])
+        #show_attention(given_sentence,prediction,attn)
+        final_prediction.extend(prediction)
 
-    return given_sentence, ground_truth, prediction
+    cnt=0
+    for sent, gt, pred in zip(given_sentence, ground_truth, final_prediction):
+        if cnt<1000:
+            cnt+=1
+            print("Sentence: %s \nGT Q: %s \nPred Q: %s" % (sent, gt, pred))
+        else:
+            break
+    return [given_sentence], ground_truth, final_prediction
 
 
 def beam_search(encoder, decoder, dev_loader, dev_idx_to_word_q):
@@ -206,6 +222,7 @@ def beam_search(encoder, decoder, dev_loader, dev_idx_to_word_q):
 
 def train(encoder: EncoderBILSTM, decoder: DecoderLSTM, epoch_count: int, train_loader: DataLoader, criterion, optimizer_enc: torch.optim.Optimizer, optimizer_dec: torch.optim.Optimizer, is_cuda: bool, teacher_forcing: bool = False, debug: bool = False, lr_schedule=False, start_epoch_at: int = 0):
     losses = []
+    best_loss=1000000
     for epoch in range(start_epoch_at, start_epoch_at + epoch_count):
         total_batch_loss = 0
         for ind, batch in enumerate(train_loader):
@@ -232,7 +249,7 @@ def train(encoder: EncoderBILSTM, decoder: DecoderLSTM, epoch_count: int, train_
                     decoder_inp = torch.ones((len(questions), 1), dtype=torch.long)
 
             if teacher_forcing:
-                decoder_out, decoder_hidden, decoder_unpacked = decoder(decoder_input, encoder_hidden, encoder_out, encoder_len)
+                decoder_out, decoder_hidden,attn_scores = decoder(decoder_input[:,:-1], encoder_hidden, encoder_out, encoder_len,False)
                 decoder_out = decoder_out.transpose(0, 1).contiguous()
                 decoder_out = decoder_out.transpose(1, 2).contiguous()
                 loss = criterion(decoder_out, questions[:, :-1])
@@ -240,44 +257,73 @@ def train(encoder: EncoderBILSTM, decoder: DecoderLSTM, epoch_count: int, train_
                 decoder_hidden = (encoder_hidden[0].clone(), encoder_hidden[1].clone())
                 eval_mode = False
                 for j in range(questions.shape[1]):
-                    decoder_out, decoder_hidden = decoder(decoder_inp, decoder_hidden, encoder_out, encoder_len, eval_mode=eval_mode)
+                    decoder_out, decoder_hidden,attn_scores = decoder(decoder_inp, decoder_hidden, encoder_out, encoder_len, eval_mode=eval_mode)
                     # obtaining log_softmax scores we need to minimize log softmax over a span.
                     decoder_out = decoder_out.squeeze(0)
                     prediction = torch.argmax(decoder_out, 1).unsqueeze(1)
                     loss_val = criterion(decoder_out, questions[:, j])
-                    loss += loss_val / questions.shape[1]
+                    loss += loss_val/questions.shape[1]
                     decoder_inp = prediction.clone().detach()
                     eval_mode = True
 
             optimizer_enc.zero_grad()
             optimizer_dec.zero_grad()
 
-            loss.backward()
 
+            loss.backward()
+            clip_grad_norm_(encoder.parameters(), 5)
+            clip_grad_norm_(decoder.parameters(), 5)
             optimizer_enc.step()
             optimizer_dec.step()
 
             if lr_schedule:
-                optimizer_enc = exp_lr_scheduler(optimizer_enc, epoch, lr_decay_epoch=25)
-                optimizer_dec = exp_lr_scheduler(optimizer_dec, epoch, lr_decay_epoch=25)
+                optimizer_enc = exp_lr_scheduler(optimizer_enc, epoch, lr_decay_epoch=8)
+                optimizer_dec = exp_lr_scheduler(optimizer_dec, epoch, lr_decay_epoch=8)
 
             total_batch_loss += loss.item()
             if debug: print("Batch Loss: %f" % loss.item())
+            if ind%1000==0:
+                print("Batch %d Loss: %f" %(ind,loss.item()))
         losses.append(total_batch_loss)
+
         print("Epoch[%d] Loss: %f" % (epoch, total_batch_loss))
-        torch.save(encoder.state_dict(), "model_weights/%d-encoder.pth" % epoch)
-        torch.save(decoder.state_dict(), "model_weights/%d-decoder.pth" % epoch)
-    torch.save(encoder.state_dict(), "model_weights/final-encoder.pth")
-    torch.save(decoder.state_dict(), "model_weights/final-decoder.pth")
+        if total_batch_loss<best_loss:
+            torch.save(encoder.state_dict(), "model_weights/%d-encoder-SGD-small.pth" % epoch)
+            torch.save(decoder.state_dict(), "model_weights/%d-decoder-SGD-small.pth" % epoch)
+            best_loss=total_batch_loss
+    torch.save(encoder.state_dict(), "model_weights/final-encoder-SGD-small.pth")
+    torch.save(decoder.state_dict(), "model_weights/final-decoder-SGD-small.pth")
     return losses
 
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+def show_attention(input_sentence, output_words, attentions):
+    input_sentence = input_sentence[0]
+    output_words=output_words[0]
+    print(input_sentence)
+    # Set up figure with colorbar
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    cax = ax.matshow(attentions, cmap='bone')
+    fig.colorbar(cax)
+
+    # Set up axes
+    ax.set_xticklabels([''] + input_sentence + ['<EOS>'], rotation=90)
+    ax.set_yticklabels([''] + output_words)
+
+    # Show label at every tick
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
+    ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
+    #plt.imshow()
+    plt.show()
+    plt.close()
 
 def main(use_cuda=True):
-    num_epoch = 50
+    num_epoch = 15
     batch_size = 64
     use_cuda = use_cuda and torch.cuda.is_available()
-    prev_model_weights_file_encoder = "model_weights/final-encoder.pth"
-    prev_model_weights_file_decoder = "model_weights/final-decoder.pth"
+    prev_model_weights_file_encoder = "model_weights/24-encoder-small_b128_mom.pth"
+    prev_model_weights_file_decoder = "model_weights/24-decoder-small_b128_mom.pth"
 
     train_dataset = SquadDataset(split="train")
 
@@ -289,7 +335,7 @@ def main(use_cuda=True):
     word_embeddings_glove_sent = GloVeEmbeddings.load_glove_embeddings(False)
 
     encoder = EncoderBILSTM(vocab_size=train_vocab_size_sent, embedding_dim=300, hidden_dim=600, n_layers=2, dropout=0.3, embeddings=word_embeddings_glove_sent)
-    decoder = DecoderLSTM(vocab_size=train_vocab_size_q, embedding_dim=300, hidden_dim=600, n_layers=1, dropout=0.3, encoder_hidden_dim=600, embeddings=word_embeddings_glove_q)
+    decoder = DecoderLSTM(vocab_size=train_vocab_size_q, embedding_dim=300, hidden_dim=600, n_layers=2, dropout=0.3, encoder_hidden_dim=600, embeddings=word_embeddings_glove_q)
 
     if prev_model_weights_file_encoder and prev_model_weights_file_decoder:
         encoder.load_state_dict(torch.load(prev_model_weights_file_encoder))
@@ -300,8 +346,8 @@ def main(use_cuda=True):
         decoder = decoder.cuda()
 
     criterion = nn.CrossEntropyLoss(ignore_index=0)
-    optimizer_enc = torch.optim.RMSprop(encoder.parameters(), lr=1e-4)
-    optimizer_dec = torch.optim.RMSprop(decoder.parameters(), lr=1e-4)
+    optimizer_enc = torch.optim.SGD(encoder.parameters(), lr=1.0)
+    optimizer_dec = torch.optim.SGD(decoder.parameters(), lr=1.0)
 
     if not os.path.isdir("model_weights"):
         os.makedirs("model_weights", exist_ok=True)
@@ -313,12 +359,22 @@ def main(use_cuda=True):
     print("-" * 100)
     given_sentence, ground_truth, prediction = greedy_search(encoder=encoder, decoder=decoder, dataset=train_dataset, use_cuda=use_cuda, batch_size=batch_size)
     print("-" * 100)
-    print("Train BLEU Score:: %f" % BleuScorer.corpus_score(ground_truth, prediction))
+    print("Train BLEU CORPUS Score:: %f" % agg_bleu(ground_truth, prediction))
+
+
+    print("Train BLEU1 Score:: %f" % BleuScorer.score_bleu1(ground_truth, prediction))
+    print("Train BLEU2 Score:: %f" % BleuScorer.score_bleu2(ground_truth, prediction))
+    print("Train BLEU3 Score:: %f" % BleuScorer.score_bleu3(ground_truth, prediction))
+    print("Train BLEU4 Score:: %f" % BleuScorer.score_bleu4(ground_truth, prediction))
 
     print("=" * 100)
     given_sentence, ground_truth, prediction = greedy_search(encoder=encoder, decoder=decoder, dataset=dev_dataset, use_cuda=use_cuda, batch_size=batch_size)
     print("-" * 100)
-    print("Dev BLEU Score:: %f" % BleuScorer.corpus_score(ground_truth, prediction))
+    print("Dev BLEU CORPUS Score:: %f" % BleuScorer.corpus_score(ground_truth, prediction))
+    print("Dev BLEU1 Score:: %f" % BleuScorer.score_bleu1(ground_truth, prediction))
+    print("Dev BLEU2 Score:: %f" % BleuScorer.score_bleu2(ground_truth, prediction))
+    print("Dev BLEU3 Score:: %f" % BleuScorer.score_bleu3(ground_truth, prediction))
+    print("Dev BLEU4 Score:: %f" % BleuScorer.score_bleu4(ground_truth, prediction))
     print("-" * 100)
 
 
