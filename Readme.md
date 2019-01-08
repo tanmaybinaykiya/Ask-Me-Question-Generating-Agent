@@ -1,6 +1,6 @@
 # Question Generating Agent
-  
-[Project Webpage]('https://tanmaybinaykiya.github.io/Question-Generating-Agent/')
+
+[Project Webpage](https://tanmaybinaykiya.github.io/Question-Generating-Agent/)
 
 ## Abstract
 Our goal is to create an agent that could learn to ask a question provided an informative sentence. Such an agent could be used for creating chatbots, conversational agents, and agents that help in reading comprehension to name a few. We used a Sequence to Sequence Deep Neural Net architecture powered by Global Attention. This architecture allows us to focus on different parts of the input sentence and determine how important each word in the sentence is to the next predicted word. We were successful in overfitting the model on a small dataset, showing us that our model was working as intended, but the difficulty in tuning hyperparameters and learning on the entire dataset was considerable. The ultimate performance we achieved on test set after the model had been trained on the entire dataset was far from ideal. 
@@ -33,5 +33,3 @@ mv glove.840B.300d.txt data/
 ```sh
 python SquadPreProcessor.py
 ```
-
-
