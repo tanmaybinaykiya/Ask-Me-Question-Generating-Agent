@@ -1,295 +1,287 @@
 <!DOCTYPE html>
-<html lang="en"><head>  
-  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  <meta charset="utf-8">
-  <title>Deep Learning Class Project | Georgia Tech | Fall 2018: CS 7643 | Ask Me</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="">
-  <meta name="author" content="">
+<html lang="en">
+  <head>  
+    <title>Ask Me - Question Generating Agent</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">    
 
-<!-- Le styles -->  
-  <link href="css/bootstrap.css" rel="stylesheet">
-<style>
-body {
-padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
-}
-.vis {
-color: #3366CC;
-}
-.data {
-color: #FF9900;
-}
-</style>
-  
-<link href="css/bootstrap-responsive.min.css" rel="stylesheet">
-</head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="An agent that could learn to ask a question based on a passage provided an informative sentence.">
+    <meta name="author" content="Tanmay Binaykiya">
+    <meta name="keywords" content="deep-learning, natural-language-processing, question-generator, question-and-answer, comprehension, pytorch, lstm, bilstm, attention, squad, glove-embeddings, cs-7643, georgia-tech">
+    
+    <link href="css/bootstrap.css" rel="stylesheet">
+    <link href="css/bootstrap-responsive.min.css" rel="stylesheet">
+    <style>
+      body {
+        padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
+      }
+      .vis {
+        color: #3366CC;
+      }
+      .data {
+        color: #FF9900;
+      }
+    </style>    
+  </head>
+  <body>
+    <div class="container">
+      <div class="page-header">
 
-<body>
-<div class="container">
-<div class="page-header">
+        <!-- Title and Name --> 
+        <h1>Ask Me!</h1> 
+        <span style="font-size: 20px; line-height: 1.5em;"><strong>Pramodith B, Saatchi B, Tanmay B</strong></span><br>
+        <span style="font-size: 18px; line-height: 1.5em;">Fall 2018 CS 4803 / 7643 Deep Learning: Class Project</span><br>
+        <span style="font-size: 18px; line-height: 1.5em;">Georgia Tech</span><br>
+        <span style="font-size: 14px; line-height: 1.5em;"><a href="https://github.com/tanmaybinaykiya/Ask-Me-Question-Generating-Agent">Github Project</a></span>
+        <hr>
 
-<!-- Title and Name --> 
-<h1>Ask Me!</h1> 
-<span style="font-size: 20px; line-height: 1.5em;"><strong>Pramodith B, Saatchi B, Tanmay B</strong></span><br>
-<span style="font-size: 18px; line-height: 1.5em;">Fall 2018 CS 4803 / 7643 Deep Learning: Class Project</span><br>
-<span style="font-size: 18px; line-height: 1.5em;">Georgia Tech</span><br>
-<span style="font-size: 14px; line-height: 1.5em;"><a href="https://github.com/tanmaybinaykiya/CS-7643-Deep-Learning-Final-Project">Github Project</a></span>
-<hr>
+        <!-- Goal -->
+        <h2>Abstract</h2>
+        Our goal is to create an agent that could learn to ask a question provided an informative sentence. Such an agent could be used for creating chatbots, conversational agents, and agents that help in reading comprehension to name a few. We used a Sequence to Sequence Deep Neural Net architecture powered by Global Attention. This architecture allows us to focus on different parts of the input sentence and determine how important each word in the sentence is to the next predicted word. We were successful in overfitting the model on a small dataset, showing us that our model was working as intended, but the difficulty in tuning hyperparameters and learning on the entire dataset was considerable. The ultimate performance we achieved on test set after the model had been trained on the entire dataset was far from ideal.
+        <br><br>
+        <!-- Main Illustrative Figure --> 
+        <div style="text-align: center;">
+          <img style="height: 400px;" alt="" src="images/teaser.png">
+        </div>
+      </div>
 
-<!-- Goal -->
-<h2>Abstract</h2>
-Our goal is to create an agent that could learn to ask a question provided an informative sentence. Such an agent could be used for creating chatbots, conversational agents, and agents that help in reading comprehension to name a few. We used a Sequence to Sequence Deep Neural Net architecture powered by Global Attention. This architecture allows us to focus on different parts of the input sentence and determine how important each word in the sentence is to the next predicted word. We were successful in overfitting the model on a small dataset, showing us that our model was working as intended, but the difficulty in tuning hyperparameters and learning on the entire dataset was considerable. The ultimate performance we achieved on test set after the model had been trained on the entire dataset was far from ideal.
-<br><br>
-<!-- Main Illustrative Figure --> 
-<div style="text-align: center;">
-<img style="height: 400px;" alt="" src="images/teaser.png">
-</div>
+      <br><br>
+      <!-- Introduction -->
+      <h2>Introduction</h2>
+      <h4>What did you try to do? What problem did you try to solve? Articulate your objectives using absolutely no jargon.</h4>
+      We attempt to create an AI agent that can read a passage and ask a question that contains an answer in the provided passage. The problem has applications in various domains including generating educational materials, testing someone’s understanding of passages, and in furthering current work on chatbots. An AI agent that can tackle this problem can aid readers in improving their understanding and retention of the material. 
 
-<br><br>
-<!-- Introduction -->
-<h2>Introduction</h2>
-<h4>What did you try to do? What problem did you try to solve? Articulate your objectives using absolutely no jargon.</h4>
-We attempt to create an AI agent that can read a passage and ask a question that contains an answer in the provided passage. The problem has applications in various domains including generating educational materials, testing someone’s understanding of passages, and in furthering current work on chatbots. An AI agent that can tackle this problem can aid readers in improving their understanding and retention of the material. 
+      <h4>How is it done today, and what are the limits of current practice?</h4>
+      Prior to the advances of deep learning methods, question generation was primarily tackled using rule-based approaches. These approaches require advanced linguistic knowledge and depend heavily on well-designed transformation rules to transform a declarative sentence into an interrogative question. In addition, it is difficult for rule based approaches to scale to new types of sentences. More recently neural network based techniques (such as <a href="#ref-1">Seq2Seq</a>) have outperformed rule-based methods for question generation, but the field is just emerging, and these models still have limitations. These models suffer from word-repetition problems, rare-word problems, and require a great deal of fine-tuning and computational power to train properly. Even after rigorous training, the models lack enough generalizability across multiple domains.
 
-<h4>How is it done today, and what are the limits of current practice?</h4>
-Prior to the advances of deep learning methods, question generation was primarily tackled using rule-based approaches. These approaches require advanced linguistic knowledge and depend heavily on well-designed transformation rules to transform a declarative sentence into an interrogative question. In addition, it is difficult for rule based approaches to scale to new types of sentences. More recently neural network based techniques (such as <a href="#ref-1">Seq2Seq</a>) have outperformed rule-based methods for question generation, but the field is just emerging, and these models still have limitations. These models suffer from word-repetition problems, rare-word problems, and require a great deal of fine-tuning and computational power to train properly. Even after rigorous training, the models lack enough generalizability across multiple domains.
+      <h4>Who cares? If you are successful, what difference will it make?</h4>
+      Question Generation using Deep Learning is a difficult problem that has not been addressed extensively. Therefore, any experiments or progress that we are able to make in this problem space is useful to the Deep Learning and Natural Language processing communities. Solving the problem of question generation has the potential to improve conversational AI, assist teachers in developing educational materials, and broadly help with the development of annotated datasets for NLP research in reading comprehension and question answering.
 
-<h4>Who cares? If you are successful, what difference will it make?</h4>
-Question Generation using Deep Learning is a difficult problem that has not been addressed extensively. Therefore, any experiments or progress that we are able to make in this problem space is useful to the Deep Learning and Natural Language processing communities. Solving the problem of question generation has the potential to improve conversational AI, assist teachers in developing educational materials, and broadly help with the development of annotated datasets for NLP research in reading comprehension and question answering.
+      <br>
+      <!-- Approach -->
+      <h2>Approach</h2>
+      <h4>What did you do exactly? How did you solve the problem? Why did you think it would be successful? Is anything new in your approach?</h4>
 
-<br>
-<!-- Approach -->
-<h2>Approach</h2>
-<h4>What did you do exactly? How did you solve the problem? Why did you think it would be successful? Is anything new in your approach?</h4>
+      <h3>Datasets</h3>
+      <ul>
+        <li>Squad: We used <a href="#ref-2">Stanford’s SQUAD dataset</a> which is a collection of excerpts from Wikipedia. Each paragraph contains a human annotated question and an answer corresponding to the question. The dataset contains over 87000 such (question, answer, paragraphs) triples.</li>
+        <li>GloVe: We choose word embedding of 300 dimensions and use the glove.840B.300d pre-trained embeddings <a href="#ref-3">(Pennington et al., 2014)</a> for initialization.</li>
+      </ul>
 
-<h3>Datasets</h3>
-<ul>
-  <li>Squad: We used <a href="#ref-2">Stanford’s SQUAD dataset</a> which is a collection of excerpts from Wikipedia. Each paragraph contains a human annotated question and an answer corresponding to the question. The dataset contains over 87000 such (question, answer, paragraphs) triples.</li>
-  <li>GloVe: We choose word embedding of 300 dimensions and use the glove.840B.300d pre-trained embeddings <a href="#ref-3">(Pennington et al., 2014)</a> for initialization.</li>
-</ul>
+      <h3>Model</h3>
 
+      Our model architecture is based on <a href="#ref-4">Learning to Ask: Neural Question Generation for Reading Comprehension</a>. The model is based on the Sequence to Sequence Model by Sutskevar et al and consists of the following modules: 
 
-<h3>Model</h3>
+      <ul>
+      <li><b>Encoder Module:</b> This module is responsible for converting the input sentence into a context embedding. A bidirectional LSTM with dropout was the main component of the encoder.</li>
+      <li><b>Decoder Module:</b> This module is responsible for predicting the words that form the question. It makes use of the attention weights along with the output of the encoder at each time step to determine the predicted output word. The decoder model primarily consists of a multi layered LSTM with dropout.</li>
+      <li><b>Global Attention Module:</b> This module determines the importance for each part of the input sentence relevant to every word predicted by the decoder module. The output of the attention model is a Tensor that weighs each word in the input sentence according to its importance to the word being predicted.</li>
+      </ul>
 
-Our model architecture is based on <a href="#ref-4">Learning to Ask: Neural Question Generation for Reading Comprehension</a>. The model is based on the Sequence to Sequence Model by Sutskevar et al and consists of the following modules: 
+      <div style="text-align: center; margin:10px; border:1px #000 solid;">
+        <img style="padding: 10px;  height: 500px;" alt="Model" src="images/model.png">
+        <div style="padding: 10px; border-top:1px #000 solid;">Bidirectional Sequence to Sequence Model with Global Attention [<a href="#ref-5">Image Source</a>]</div>
+      </div>
 
-<ul>
-<li><b>Encoder Module:</b> This module is responsible for converting the input sentence into a context embedding. A bidirectional LSTM with dropout was the main component of the encoder.</li>
-<li><b>Decoder Module:</b> This module is responsible for predicting the words that form the question. It makes use of the attention weights along with the output of the encoder at each time step to determine the predicted output word. The decoder model primarily consists of a multi layered LSTM with dropout.</li>
-<li><b>Global Attention Module:</b> This module determines the importance for each part of the input sentence relevant to every word predicted by the decoder module. The output of the attention model is a Tensor that weighs each word in the input sentence according to its importance to the word being predicted.</li>
-</ul>
+      <h3>Inference</h3>
 
-<div style="text-align: center; margin:10px; border:1px #000 solid;">
-  <img style="padding: 10px;  height: 500px;" alt="Model" src="images/model.png">
-  <div style="padding: 10px; border-top:1px #000 solid;">Bidirectional Sequence to Sequence Model with Global Attention [<a href="#ref-5">Image Source</a>]</div>
-</div>
+      We made use of greedy search where the word with the highest probability is chosen as the output word. 
 
-<h3>Inference</h3>
+      <h4>What problems did you anticipate? What problems did you encounter? Did the very first thing you tried work?</h4>
 
-We made use of greedy search where the word with the highest probability is chosen as the output word. 
+      <b>Creating Batches:</b> Many tutorials we referenced were not creating batches for language tasks that involved Seq2Seq models. Given the size of our dataset we anticipated that training the model will take an extremely long time if we didn’t employ batching. Figuring out how best to batch our data was a problem that we encountered. 
+      Batching in NLP tasks is tough due to the fact that sentences in a given batch can have different lengths, whereas the model requires a fixed sequence length in the batch. One approach to address this issue is to pick the length of the batch as the length of the longest sentence in the batch and pad the other sentences with some fixed arbitrarily chosen string. However, using this method, we had to account for the fact that gradients are computed and a forward pass is made on these irrelevant tokens which leads to erroneous gradient updates.
+      <br><br>
+      <b>Solution:</b> We created a custom collate function that aggregates and pads the sentences in the batch with a <PAD> token if the sentence’s length is shorter than that of the largest sentence in that batch. Then we made use of Pytorch’s packed_sequence and padding_sequence to ignore the <PAD> tokens during the forward and backward pass on that example.
+      <br><br>
+      <b>Biasing the model:</b>  We initially believed that the dataset might be too large to train on. So we decided to subsample the dataset and hoped that the subsample would be diverse enough for the model to generalize well. However it turned out that the way we selected the sample tended to bias the model to learn about certain topics in the dataset like the NFL and this prevented it from generalizing well. 
+      <br>
+      We later decided that it would be best to train the model on the entire dataset so that it can learn information about all the relevant topics present in the SQuAD dataset.
 
+      <br><br>
+      <b>Difficulty in training:</b> We hadn’t expected it to be tough to train the model as we had access to GPUs, but as we progressed we found it extremely difficult to train the model in a manner that ensured a stable decrease in loss. 
+      <br>
+      We conducted many experiments to verify the validity of the model and tune the model parameters, and we will list a few of the experiments we conducted in the next section.
+      We started by using the parameters suggested by the paper.Yet we had conduct a lot of experiments even to understand where the main point of failure of the model was since in our initial runs the models was learning to just predict the < START> token all of the time. Even after improving our model from this point, we continued to run into issues, which took a lot of time debugging. 
 
-<h4>What problems did you anticipate? What problems did you encounter? Did the very first thing you tried work?</h4>
+      <br><br>
+      <!-- Results -->
+      <h2>Experiments and Results</h2>
+      <h4>How did you measure success? What experiments were used? What were the results, both quantitative and qualitative? Did you succeed? Did you fail? Why?</h4>
+      We used the BLEU score to evaluate our results, along with eyeballing the output to verify if the questions generated made sense or had any resemblance of a question.
+      BLEU score evaluates a sentence compared to a ground truth based on the ratio of matching n-grams. We computed this metric across our entire test dataset, by comparing each ground-truth question to our generated question. 
 
-<b>Creating Batches:</b> Many tutorials we referenced were not creating batches for language tasks that involved Seq2Seq models. Given the size of our dataset we anticipated that training the model will take an extremely long time if we didn’t employ batching. Figuring out how best to batch our data was a problem that we encountered. 
-Batching in NLP tasks is tough due to the fact that sentences in a given batch can have different lengths, whereas the model requires a fixed sequence length in the batch. One approach to address this issue is to pick the length of the batch as the length of the longest sentence in the batch and pad the other sentences with some fixed arbitrarily chosen string. However, using this method, we had to account for the fact that gradients are computed and a forward pass is made on these irrelevant tokens which leads to erroneous gradient updates.
-<br><br>
-<b>Solution:</b> We created a custom collate function that aggregates and pads the sentences in the batch with a <PAD> token if the sentence’s length is shorter than that of the largest sentence in that batch. Then we made use of Pytorch’s packed_sequence and padding_sequence to ignore the <PAD> tokens during the forward and backward pass on that example.
-<br><br>
-<b>Biasing the model:</b>  We initially believed that the dataset might be too large to train on. So we decided to subsample the dataset and hoped that the subsample would be diverse enough for the model to generalize well. However it turned out that the way we selected the sample tended to bias the model to learn about certain topics in the dataset like the NFL and this prevented it from generalizing well. 
-<br>
-We later decided that it would be best to train the model on the entire dataset so that it can learn information about all the relevant topics present in the SQuAD dataset.
+      <h3>Experiments</h3>
+      <b>Training with teacher forcing:</b> Initially we trained our model using teacher forcing. We observed that the training loss values decreased over time and hoped that this indicated that the model was performing well. But when we used the model to predict sentences on the test set we observed that the model had only learnt to output the < START> or < END> token all the time. To make sense of this we checked the model’s predicted outputs on the training set. Here we observed that the model predicted the right word only if the corresponding ground truth word was passed in as input (teacher forcing). As a consequence when the model predicts even one word wrong, the input to the next cell is different from what it trained on leading to erroneous results. This seemed to cause a cascading effect in the prediction error and showed us that the model was not generalizing well when we employed teacher forcing. 
+      <br><br>
+      <b>We trained the model using the decoder’s previous cells output as the input to the next cell:</b> Our initial model was based on the architecture described by <a href="#ref-4">Xinya et al</a> paper, however our results continued to be poor even with extensive hyperparameter tuning. We decided it would be good if we can verify that the model overfits on a small dataset. This was to ensure that we could actually learn what we hoped to, and see if something was perhaps wrong with our model. We sampled from the dataset and trained on a 1000 example training set. We then evaluated our model on the overfit dataset to check if the predictions made sense. 
+      <br><br>
+      <b>Training on the entire dataset:</b> On training on the entire dataset we observed that the model was highly unstable. The loss curves obtained weren't as smooth as expected and based on a cursory qualitative analysis, the results weren’t very promising. The predictions made no sense both in terms of grammar and tokens. Often, the model predicted the same word all the time so we conducted the following hyper parameter tuning experiments:  
+      <ol>
+        <li>Trying different learning rates ranging from 1.0 to 1e-8</li>
+        <li>Trying different optimizers like SGD, Adam, RMSProp, Adamax</li>
+        <li>Gradient clipping</li>
+        <li>Learning rate decay</li>
+        <li>Changing the vocabulary size</li>
+        <li>Adding multiple layers to the LSTM</li>
+        <li>Trying different methods of the <a href="#ref-6">Luong et al Global Attention</a>. We tried calculating the score vector using the dot and concat techniques. Calculation of the attentional vector and experimenting with the number of linear layers, or using the ReLU operation</li>
+      </ol>
 
-<br><br>
-<b>Difficulty in training:</b> We hadn’t expected it to be tough to train the model as we had access to GPUs, but as we progressed we found it extremely difficult to train the model in a manner that ensured a stable decrease in loss. 
-<br>
-We conducted many experiments to verify the validity of the model and tune the model parameters, and we will list a few of the experiments we conducted in the next section.
-We started by using the parameters suggested by the paper.Yet we had conduct a lot of experiments even to understand where the main point of failure of the model was since in our initial runs the models was learning to just predict the < START> token all of the time. Even after improving our model from this point, we continued to run into issues, which took a lot of time debugging. 
+      <h3>Observations</h3>
+      <ol>
+        <li>We observed that a learning rate between 1e-4 and 1e-6 lead to stable learning though the losses didn’t drop as drastically as expected</li>
+        <li>RMSProp and Adam worked best for our models</li>
+        <li>The presence or absence of gradient clipping, and learning rate decay didn’t seem to make much of a difference</li>
+        <li>Adding a two layered decoder seemed to give us slightly more meaningful output sentences</li>
+        <li>Different attention techniques didn’t appear to have much of an impact</li>
+      </ol>
 
-<br><br>
-<!-- Results -->
-<h2>Experiments and Results</h2>
-<h4>How did you measure success? What experiments were used? What were the results, both quantitative and qualitative? Did you succeed? Did you fail? Why?</h4>
-We used the BLEU score to evaluate our results, along with eyeballing the output to verify if the questions generated made sense or had any resemblance of a question.
-BLEU score evaluates a sentence compared to a ground truth based on the ratio of matching n-grams. We computed this metric across our entire test dataset, by comparing each ground-truth question to our generated question. 
+      <h4>Attention Visualization</h3>
 
-<h3>Experiments</h3>
-<b>Training with teacher forcing:</b> Initially we trained our model using teacher forcing. We observed that the training loss values decreased over time and hoped that this indicated that the model was performing well. But when we used the model to predict sentences on the test set we observed that the model had only learnt to output the < START> or < END> token all the time. To make sense of this we checked the model’s predicted outputs on the training set. Here we observed that the model predicted the right word only if the corresponding ground truth word was passed in as input (teacher forcing). As a consequence when the model predicts even one word wrong, the input to the next cell is different from what it trained on leading to erroneous results. This seemed to cause a cascading effect in the prediction error and showed us that the model was not generalizing well when we employed teacher forcing. 
-<br><br>
-<b>We trained the model using the decoder’s previous cells output as the input to the next cell:</b> Our initial model was based on the architecture described by <a href="#ref-4">Xinya et al</a> paper, however our results continued to be poor even with extensive hyperparameter tuning. We decided it would be good if we can verify that the model overfits on a small dataset. This was to ensure that we could actually learn what we hoped to, and see if something was perhaps wrong with our model. We sampled from the dataset and trained on a 1000 example training set. We then evaluated our model on the overfit dataset to check if the predictions made sense. 
-<br><br>
-<b>Training on the entire dataset:</b> On training on the entire dataset we observed that the model was highly unstable. The loss curves obtained weren't as smooth as expected and based on a cursory qualitative analysis, the results weren’t very promising. The predictions made no sense both in terms of grammar and tokens. Often, the model predicted the same word all the time so we conducted the following hyper parameter tuning experiments:  
-<ol>
-  <li>Trying different learning rates ranging from 1.0 to 1e-8</li>
-  <li>Trying different optimizers like SGD, Adam, RMSProp, Adamax</li>
-  <li>Gradient clipping</li>
-  <li>Learning rate decay</li>
-  <li>Changing the vocabulary size</li>
-  <li>Adding multiple layers to the LSTM</li>
-  <li>Trying different methods of the <a href="#ref-6">Luong et al Global Attention</a>. We tried calculating the score vector using the dot and concat techniques. Calculation of the attentional vector and experimenting with the number of linear layers, or using the ReLU operation</li>
-</ol>
+      This is a closer look at the attention visualization(overfit on a small dataset). The y-axes are the predicted output, and x-axes are the source sentence given. Here, lighter colors represent higher attention weights.
 
-<h3>Observations</h3>
-<ol>
-  <li>We observed that a learning rate between 1e-4 and 1e-6 lead to stable learning though the losses didn’t drop as drastically as expected</li>
-  <li>RMSProp and Adam worked best for our models</li>
-  <li>The presence or absence of gradient clipping, and learning rate decay didn’t seem to make much of a difference</li>
-  <li>Adding a two layered decoder seemed to give us slightly more meaningful output sentences</li>
-  <li>Different attention techniques didn’t appear to have much of an impact</li>
-</ol>
+      <div style="text-align: center; margin:10px; border:1px #000 solid;">
+        <img style="padding: 10px;  width: 50%" alt="Attention Visualization 1" src="images/attention-1.jpeg">
+        <div style="padding: 10px; text-align: center; border-top:1px #000 solid;">
+          Ground Truth: What thriller film did beyonce star in?
+          <br>
+          Predicted Question: What thriller film did beyonce star in?
+        </div>
+      </div>
+      <br>
+      <b>Interpretation:</b> As this is from our overfit model, it is not surprising that the predicted output matches the ground-truth exactly. In observing the attention, we see the range of weights over each word in the source sentence for each predicted word on the y-axis. A couple key points stand out. The model learns a high weight association between “film” and “obsessed” which is interesting, as “obsessed” is the name of the film in this context. We also see high attention weights between “beyonce” and “starred,” since Beyonce starred in the film. These attention weights provide us a little bit more insight into what the model is using to help with predicting.
+      <br><br>
 
-<h4>Attention Visualization</h3>
+      <div style="text-align: center; margin:10px; border:1px #000 solid;">
+        <img style="padding: 10px;  width: 50%" alt="Attention Visualization 2" src="images/attention-2.jpeg">
+        <div style="padding: 10px; text-align: center; border-top:1px #000 solid;">
+          Ground Truth: How does alice jones describe her?
+          <br>
+          Predicted Question: What does Alice Jones descrive her?
+        </div>
+      </div>
+      <br>
+      <b>Interpretation:</b> Here there is a slight difference in predicted output: the true value is “How does alice jones describe her” whereas the predicted output is “What does alice jones describe her.” This is not surprising, as the “what” question word may have higher probability to start sentences. However it is interesting, that even when the prediction starts off incorrectly, the model is still able to correctly predict the remaining words in the question, and still output a cohesive question. The attention weights here are difficult to interpret as the source sentence is extremely long, and it looks like there is an incorrect strong weight association between Alice Jones and Barbara Ellen. Due to the convoluted visualization, it is difficult for us to understand the influence on predictions and why the output might be good
+      <br><br>
+      <ul>
+        <li><b>Sentence:</b> his book evolution and dogma (1896) defended certain aspects of evolutionary theory as true and argued moreover that even the great church teachers thomas aquinas and augustine taught something like it </li>
+        <li><b>Ground Truth Question:</b> what book did john zahm write in 1896?</li>
+        <li><b>Predicted Question:</b> what book did john of write in 1896</li>
+      </ul>
+      <ul>
+        <li><b>Sentence:</b> hesburgh library completed in 1963 which is the third building to house the main collection of books </li>
+        <li><b>Ground Truth Question:</b> in what year was the theodore m hesburgh library at notre dame finished ?</li>
+        <li><b>Predicted Question:</b>in what year was the theodore m hesburgh library at notre dame finished ?</li>
+      </ul>
 
-This is a closer look at the attention visualization(overfit on a small dataset). The y-axes are the predicted output, and x-axes are the source sentence given. Here, lighter colors represent higher attention weights.
+      <h3>Results</h3>
+      Our results on the complete SQuAD Dataset are as follows:
+      <br>
+      <b>Train BLEU-1 Score: 0.26</b>
+      <br>
+      <b>Test BLEU-1 Score: 0.18</b>
+      <br><br>
 
-<div style="text-align: center; margin:10px; border:1px #000 solid;">
-  <img style="padding: 10px;  width: 50%" alt="Attention Visualization 1" src="images/attention-1.jpeg">
-  <div style="padding: 10px; text-align: center; border-top:1px #000 solid;">
-    Ground Truth: What thriller film did beyonce star in?
+      We wouldn’t say that this is a success but the outputted language had the structure of a question to some extent, and the model learnt some of the nouns and words from the input sentence. Here are some sample output questions on the test set:
+      <ul>
+        <li><b>Sentence:</b> john's cathedral century the temple is a typical example of the so-called gothic style </li>
+        <li><b>Ground Truth Question:</b> What is st john's cathedral an example of?</li>
+        <li><b>Predicted Question:</b> What is the cathedral george's the dedicated cathedral</li>
+      </ul>
+      <ul>
+        <li><b>Sentence:</b> According to the 1901 census out of inhabitants 56</li>
+        <li><b>Ground Truth Question:</b> What was population in 1901?</li>
+        <li><b>Predicted Question:</b> What percent of the population of in in?</li>
+      </ul>
+      <ul>
+        <li><b>Sentence:</b>  as this was the super bowl the league emphasized the with various initiatives as well as temporarily the tradition of naming each super bowl game with roman (under which the game would have been known as bowl so that the logo could prominently feature the arabic 50</li>
+        <li><b>Ground Truth Question:</b> What was the theme of super bowl 50</li>
+        <li><b>Predicted Question:</b> What team the title title the the the the</li>
+      </ul>
+
+      As you can see the network learns to predict a question word at the beginning and tends to draw some relevant nouns from the input sentence, but overall it’s not that great. 
+      <br>
+      <h2>Details</h2>
+      <h4>What was the structure of your problem? How did the structure of your model reflect the structure of your problem?</h4>
+      Question generation can be thought of as reading a sentence/paragraph and transforming declarative sentences into interrogative ones. The structure of the problem lies in identifying declarative sentences and extracting key words that can be formed into a natural question. A human is able to understand the context of the words and naturally form a question based on understanding the relationship between words and identifying which words are key. The structure of our model as a seq2seq model with attention reflects the structure of the problem, as we are encoding the sentence to capture this context, and learning attention weights that identify which words in the context are most important for predicting the next word. In language it is also quite natural for words to depend on their neighbouring words, and when we are completing a sentence we often take into consideration the previous words that we have written. 
+      <br><br>
+
+      The use of a bidirectional LSTM in the encoder let’s us take into consideration the dependency between words surrounding the current word in both directions. The use of an LSTM in the decoder layer takes as input the word predicted by the previous LSTM node.
+      The encoder is responsible for creating a context vector ie a representation of the input sentence that is supposed to learn the key concepts or an overall gist of the statement. The attention module is responsible for finding out which parts of the context vector generated by the encoder are relevant to the current word that is about to be predicted, the decoder actually generates the question based on the previous output word and the attention vector.
+      <br>
+
+      <h4>What parts of your model had learned parameters (e.g., convolution layers) and what parts did not (e.g., post-processing classifier probabilities into decisions)?</h4>
+      Our entire model was trained end to end. However since we used pre-trained glove embeddings we decided to freeze the weights for the embedding layer.so the weights for the embedding layer were no longer learnt.
+      The list of learned parameters were:
+      LSTMs in both the encoder and decoder.
+      Linear layers in the attention module, decoder.
+      <br>
+
+      The final scores were converted to log probabilities in the decoder end and the we also converted the attention scores into probabilities using the Softmax layer.
+      <h4>What representations of input and output did the neural network expect? How was the data pre/post-processed?</h4>
+      Representation of input and output:
+      We divided the vocabulary of our corpus into 2 parts:
+      <ul>
+      <li>Vocabulary of the Input Sentences.</li>
+      <li>Vocabulary of the ground truth questions being asked.</li>
+      </ul>
+      We pruned the sizes to the 45000 most frequent words for the input sentences and 18000 most frequent for the questions. Each of these vocabularies had a unique word to index mapping. The Tensor of the mapped indices of the statements are passed as input to the encoder and the ground truth predicts indices that map to the words in the vocabulary of questions.
+      <br><br>
+      <b>Pre-processing</b>
+      <br>
+
+      We had to extract the sentence that contained the response to the generated question from it’s corresponding paragraph in the SQUAD dataset. So preprocessing consisted of actually parsing the paragraphs in the SQUAD dataset to extract the right sentences. Our final dataset was simply the sentence, question pairs after preprocessing. 
+      As mentioned earlier the vocabulary had to be pruned, thus we also needed to create a Tensor of the glove embeddings corresponding to the words present in the vocabulary of the sentences and questions.
+      We created Pytorch DataLoaders and dataset instances to create mini batches effectively.
+      <br><br>
+
+      <b>Post-processing</b>
+      <br>
+
+      This involved mapping the predicted indices back to their respective words. 
+
+      <h4>What was the loss function?</h4>
+      We use the Cross Entropy function to model the loss.
+
+      <h4>Did the model overfit? How well did the approach generalize?</h4>
+      We overfit the model on a sub-sample of the training set. We were not able to overfit on the entire dataset either. The model could not generalize on the test set..The model predictions were biased towards the topics(words) from the training set.
+
+      <h4>What hyperparameters did the model have? How were they chosen? How did they affect performance? What optimizer was used?</h4>
+      <b>Hyperparameters: </b>
+      <ul>
+        <li>Learning Rate and Momentum: As expected, the training procedure was highly sensitive to the values chosen. The safe region for learning rate was 1e-3 and 1e-5, outside of which the training curves were highly spiked.</li>
+        <li>Dropout: We fixed the value at 0.3.</li>
+        <li>Number of Hidden layers in the Encoder and Decoder LSTMs: Increasing the number of hidden layers in the encoder did not affect accuracy, but increasing the number of layers in the decoder did improve the accuracy.</li>
+      </ul>
+
+      <h4>What Deep Learning framework did you use?</h4>
+      We used <a href="#ref-7">Pytorch</a> for modelling and <a href="#ref-8">Google Colab</a> as servers to train our models and one of the GT servers that a team member had access to.
+
+      <h4>What existing code or models did you start with and what did those starting points provide?</h4>
+      We started with the architecture suggested by  <a href="#ref-4">Xinya et al in Learning to Ask: Neural Question Generation for Reading Comprehension</a>. This provided us with information regarding a model that worked for them for question generation along with details regarding training time and hyperparameters. We did not start with any code, but referenced other Seq2Seq models available online. However our task and attention mechanism was different, so a majority was implemented from scratch. The starting points gave us a good idea of what the general model for the task should look like. They also suggested a set of hyper-parameters that they claimed to be successful for them but these hyper-parameters didn’t work well for us. We also made use of pretrained glove word embeddings and nltk’s implementation of BLEU score calculation.
+
+      <br><br>
+      <h2>References</h2>
+      <ol>
+        <li id ="ref-1"> <a href="http://papers.nips.cc/paper/5346-sequence-to-sequence-learnin" >Seq2Seq</a></li>
+        <li id ="ref-2"> <a href="https://rajpurkar.github.io/SQuAD-explorer/explore/1.1/dev/" >SQuAD Dataset</a></li>
+        <li id ="ref-3"> <a href="https://nlp.stanford.edu/projects/glove/" >GloVe</a></li>
+        <li id ="ref-4"> <a href="https://arxiv.org/abs/1705.00106" >Learning to Ask: Neural Question Generation for Reading Comprehension</a></li>
+        <li id ="ref-5"> <a href="https://medium.com/datalogue/attention-in-keras-1892773a4f22" >Seq2seq with attention Image</a></li>
+        <li id ="ref-6"> <a href="https://arxiv.org/abs/1508.04025" >Effective Approaches to Attention-based Neural Machine Translation</a></li>  
+        <li id ="ref-7"> <a href="https://pytorch.org/" >Pytorch</a></li>
+        <li id ="ref-8"> <a href="https://colab.research.google.com" >Google Colab</a></li>
+        <li id ="ref-9"> <a href="https://github.com/tanmaybinaykiya/CS-7643-Deep-Learning-Final-Project" >Github</a></li>
+      </ol>
+
+      <hr>
+      <footer> 
+      <p>Pramodith, Saatchi, Tanmay</p>
+      </footer>
+      </div>
+    </div>
     <br>
-    Predicted Question: What thriller film did beyonce star in?
-  </div>
-</div>
-<br>
-<b>Interpretation:</b> As this is from our overfit model, it is not surprising that the predicted output matches the ground-truth exactly. In observing the attention, we see the range of weights over each word in the source sentence for each predicted word on the y-axis. A couple key points stand out. The model learns a high weight association between “film” and “obsessed” which is interesting, as “obsessed” is the name of the film in this context. We also see high attention weights between “beyonce” and “starred,” since Beyonce starred in the film. These attention weights provide us a little bit more insight into what the model is using to help with predicting.
-<br><br>
-
-<div style="text-align: center; margin:10px; border:1px #000 solid;">
-  <img style="padding: 10px;  width: 50%" alt="Attention Visualization 2" src="images/attention-2.jpeg">
-  <div style="padding: 10px; text-align: center; border-top:1px #000 solid;">
-    Ground Truth: How does alice jones describe her?
     <br>
-    Predicted Question: What does Alice Jones descrive her?
-  </div>
-</div>
-<br>
-<b>Interpretation:</b> Here there is a slight difference in predicted output: the true value is “How does alice jones describe her” whereas the predicted output is “What does alice jones describe her.” This is not surprising, as the “what” question word may have higher probability to start sentences. However it is interesting, that even when the prediction starts off incorrectly, the model is still able to correctly predict the remaining words in the question, and still output a cohesive question. The attention weights here are difficult to interpret as the source sentence is extremely long, and it looks like there is an incorrect strong weight association between Alice Jones and Barbara Ellen. Due to the convoluted visualization, it is difficult for us to understand the influence on predictions and why the output might be good
-<br><br>
-<ul>
-  <li><b>Sentence:</b> his book evolution and dogma (1896) defended certain aspects of evolutionary theory as true and argued moreover that even the great church teachers thomas aquinas and augustine taught something like it </li>
-  <li><b>Ground Truth Question:</b> what book did john zahm write in 1896?</li>
-  <li><b>Predicted Question:</b> what book did john of write in 1896</li>
-</ul>
-<ul>
-  <li><b>Sentence:</b> hesburgh library completed in 1963 which is the third building to house the main collection of books </li>
-  <li><b>Ground Truth Question:</b> in what year was the theodore m hesburgh library at notre dame finished ?</li>
-  <li><b>Predicted Question:</b>in what year was the theodore m hesburgh library at notre dame finished ?</li>
-</ul>
-
-<h3>Results</h3>
-Our results on the complete SQuAD Dataset are as follows:
-<br>
-<b>Train BLEU-1 Score: 0.26</b>
-<br>
-<b>Test BLEU-1 Score: 0.18</b>
-<br><br>
-
-We wouldn’t say that this is a success but the outputted language had the structure of a question to some extent, and the model learnt some of the nouns and words from the input sentence. Here are some sample output questions on the test set:
-
-<ul>
-  <li><b>Sentence:</b> john's cathedral century the temple is a typical example of the so-called gothic style </li>
-  <li><b>Ground Truth Question:</b> What is st john's cathedral an example of?</li>
-  <li><b>Predicted Question:</b> What is the cathedral george's the dedicated cathedral</li>
-</ul>
-<ul>
-  <li><b>Sentence:</b> According to the 1901 census out of inhabitants 56</li>
-  <li><b>Ground Truth Question:</b> What was population in 1901?</li>
-  <li><b>Predicted Question:</b> What percent of the population of in in?</li>
-</ul>
-<ul>
-  <li><b>Sentence:</b>  as this was the super bowl the league emphasized the with various initiatives as well as temporarily the tradition of naming each super bowl game with roman (under which the game would have been known as bowl so that the logo could prominently feature the arabic 50</li>
-  <li><b>Ground Truth Question:</b> What was the theme of super bowl 50</li>
-  <li><b>Predicted Question:</b> What team the title title the the the the</li>
-</ul>
-
-As you can see the network learns to predict a question word at the beginning and tends to draw some relevant nouns from the input sentence, but overall it’s not that great. 
-<br>
-<h2>Details</h2>
-<h4>What was the structure of your problem? How did the structure of your model reflect the structure of your problem?</h4>
-Question generation can be thought of as reading a sentence/paragraph and transforming declarative sentences into interrogative ones. The structure of the problem lies in identifying declarative sentences and extracting key words that can be formed into a natural question. A human is able to understand the context of the words and naturally form a question based on understanding the relationship between words and identifying which words are key. The structure of our model as a seq2seq model with attention reflects the structure of the problem, as we are encoding the sentence to capture this context, and learning attention weights that identify which words in the context are most important for predicting the next word. In language it is also quite natural for words to depend on their neighbouring words, and when we are completing a sentence we often take into consideration the previous words that we have written. 
-<br><br>
-
-The use of a bidirectional LSTM in the encoder let’s us take into consideration the dependency between words surrounding the current word in both directions. The use of an LSTM in the decoder layer takes as input the word predicted by the previous LSTM node.
-The encoder is responsible for creating a context vector ie a representation of the input sentence that is supposed to learn the key concepts or an overall gist of the statement. The attention module is responsible for finding out which parts of the context vector generated by the encoder are relevant to the current word that is about to be predicted, the decoder actually generates the question based on the previous output word and the attention vector.
-<br>
-
-<h4>What parts of your model had learned parameters (e.g., convolution layers) and what parts did not (e.g., post-processing classifier probabilities into decisions)?</h4>
-Our entire model was trained end to end. However since we used pre-trained glove embeddings we decided to freeze the weights for the embedding layer.so the weights for the embedding layer were no longer learnt.
-The list of learned parameters were:
-LSTMs in both the encoder and decoder.
-Linear layers in the attention module, decoder.
-<br>
-
-The final scores were converted to log probabilities in the decoder end and the we also converted the attention scores into probabilities using the Softmax layer.
-
-<h4>What representations of input and output did the neural network expect? How was the data pre/post-processed?</h4>
-Representation of input and output:
-We divided the vocabulary of our corpus into 2 parts:
-<ul>
-<li>Vocabulary of the Input Sentences.</li>
-<li>Vocabulary of the ground truth questions being asked.</li>
-</ul>
-We pruned the sizes to the 45000 most frequent words for the input sentences and 18000 most frequent for the questions. Each of these vocabularies had a unique word to index mapping. The Tensor of the mapped indices of the statements are passed as input to the encoder and the ground truth predicts indices that map to the words in the vocabulary of questions.
-<br><br>
-<b>Pre-processing</b>
-<br>
-
-We had to extract the sentence that contained the response to the generated question from it’s corresponding paragraph in the SQUAD dataset. So preprocessing consisted of actually parsing the paragraphs in the SQUAD dataset to extract the right sentences. Our final dataset was simply the sentence, question pairs after preprocessing. 
-As mentioned earlier the vocabulary had to be pruned, thus we also needed to create a Tensor of the glove embeddings corresponding to the words present in the vocabulary of the sentences and questions.
-We created Pytorch DataLoaders and dataset instances to create mini batches effectively.
-<br><br>
-
-<b>Post-processing</b>
-<br>
-
-This involved mapping the predicted indices back to their respective words. 
-
-<h4>What was the loss function?</h4>
-We use the Cross Entropy function to model the loss.
-
-<h4>Did the model overfit? How well did the approach generalize?</h4>
-We overfit the model on a sub-sample of the training set. We were not able to overfit on the entire dataset either. The model could not generalize on the test set..The model predictions were biased towards the topics(words) from the training set.
-
-<h4>What hyperparameters did the model have? How were they chosen? How did they affect performance? What optimizer was used?</h4>
-<b>Hyperparameters: </b>
-<ul>
-  <li>Learning Rate and Momentum: As expected, the training procedure was highly sensitive to the values chosen. The safe region for learning rate was 1e-3 and 1e-5, outside of which the training curves were highly spiked.</li>
-  <li>Dropout: We fixed the value at 0.3.</li>
-  <li>Number of Hidden layers in the Encoder and Decoder LSTMs: Increasing the number of hidden layers in the encoder did not affect accuracy, but increasing the number of layers in the decoder did improve the accuracy.</li>
-</ul>
-
-<h4>What Deep Learning framework did you use?</h4>
-We used <a href="#ref-7">Pytorch</a> for modelling and <a href="#ref-8">Google Colab</a> as servers to train our models and one of the GT servers that a team member had access to.
-
-<h4>What existing code or models did you start with and what did those starting points provide?</h4>
-We started with the architecture suggested by  <a href="#ref-4">Xinya et al in Learning to Ask: Neural Question Generation for Reading Comprehension</a>. This provided us with information regarding a model that worked for them for question generation along with details regarding training time and hyperparameters. We did not start with any code, but referenced other Seq2Seq models available online. However our task and attention mechanism was different, so a majority was implemented from scratch. The starting points gave us a good idea of what the general model for the task should look like. They also suggested a set of hyper-parameters that they claimed to be successful for them but these hyper-parameters didn’t work well for us. We also made use of pretrained glove word embeddings and nltk’s implementation of BLEU score calculation.
-
-
-
-<br><br>
-<h2>References</h2>
-<ol>
-  <li id ="ref-1"> <a href="http://papers.nips.cc/paper/5346-sequence-to-sequence-learnin" >Seq2Seq</a></li>
-  <li id ="ref-2"> <a href="https://rajpurkar.github.io/SQuAD-explorer/explore/1.1/dev/" >SQuAD Dataset</a></li>
-  <li id ="ref-3"> <a href="https://nlp.stanford.edu/projects/glove/" >GloVe</a></li>
-  <li id ="ref-4"> <a href="https://arxiv.org/abs/1705.00106" >Learning to Ask: Neural Question Generation for Reading Comprehension</a></li>
-  <li id ="ref-5"> <a href="https://medium.com/datalogue/attention-in-keras-1892773a4f22" >Seq2seq with attention Image</a></li>
-  <li id ="ref-6"> <a href="https://arxiv.org/abs/1508.04025" >Effective Approaches to Attention-based Neural Machine Translation</a></li>  
-  <li id ="ref-7"> <a href="https://pytorch.org/" >Pytorch</a></li>
-  <li id ="ref-8"> <a href="https://colab.research.google.com" >Google Colab</a></li>
-  <li id ="ref-9"> <a href="https://github.com/tanmaybinaykiya/CS-7643-Deep-Learning-Final-Project" >Github</a></li>
-</ol>
-
-<hr>
-<footer> 
-<p>Pramodith, Saatchi, Tanmay</p>
-</footer>
-</div>
-</div>
-
-<br><br>
-
-
-
-
-</body></html>
+  </body>
+</html>
